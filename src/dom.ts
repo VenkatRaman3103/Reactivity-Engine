@@ -1,4 +1,5 @@
 import { createEffect } from "./effect";
+import { engineError, engineWarn } from "./errors";
 
 export type Child =
   | string
@@ -18,14 +19,51 @@ export function h(
 ): Node {
   if (typeof tag === "function") {
     const props_ = props ?? {};
-    if (children.length > 0) props_.children = children;
-    return tag(props_);
+    const result = tag(props_);
+
+    // error — component returned nothing
+    if (result === null || result === undefined) {
+      engineWarn({
+        category: "DOM",
+        what: `A component function returned ${result}.`,
+        why: "Component functions must return a DOM node.",
+        fix: "Make sure your component returns JSX.",
+      });
+      return document.createTextNode("");
+    }
+
+    // error — component returned a non-element
+    if (!(result instanceof Node)) {
+      engineError({
+        category: "DOM",
+        what: `A component function returned an invalid value.`,
+        why: `Expected a DOM Node but received: ${typeof result}`,
+        fix:
+          "Components must return JSX. Plain objects, strings, and " +
+          "numbers are not valid return values at the top level.",
+      });
+    }
+
+    return result;
   }
 
   if (tag === "__fragment") {
     const f = document.createDocumentFragment();
     children.flat(Infinity).forEach((c) => applyChild(f, c));
     return f;
+  }
+
+  // error — empty tag
+  if (!tag || typeof tag !== "string") {
+    engineError({
+      category: "DOM",
+      what: `Invalid element tag: '${tag}'.`,
+      why: "h() received an empty or non-string tag name.",
+      fix:
+        "Make sure your JSX uses valid HTML tag names.\n" +
+        "  <div>...</div>   ← correct\n" +
+        '  <"">...</"">     ← wrong',
+    });
   }
 
   const el = document.createElement(tag);

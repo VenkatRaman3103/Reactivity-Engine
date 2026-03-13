@@ -1,4 +1,5 @@
 import { Signal, batch } from "./reactive";
+import { engineError, engineWarn } from "./errors";
 
 const signalCache = new Map<string, Map<string, Signal<any>>>();
 
@@ -6,12 +7,29 @@ export function wrapState<T extends Record<string, any>>(
   file: string,
   mod: T,
 ): T {
+  // error — empty state file
+  if (!mod || Object.keys(mod).length === 0) {
+    engineWarn({
+      category: "State",
+      file,
+      what: `State file '${file}' has no exports.`,
+      why: "The file exists but exports nothing.",
+      fix:
+        `Add exported variables and functions.\n` +
+        `  export let count = 0\n` +
+        `  export function increment() { count++ }`,
+    });
+  }
+
   if (!signalCache.has(file)) {
     signalCache.set(file, new Map());
   }
   const fileSignals = signalCache.get(file)!;
 
   const wrapped: Record<string, any> = {};
+  const exportedFunctions = Object.keys(mod).filter(
+    (k) => typeof mod[k] === "function",
+  );
 
   Object.keys(mod).forEach((key) => {
     const initialVal = mod[key];
@@ -19,27 +37,67 @@ export function wrapState<T extends Record<string, any>>(
     if (typeof initialVal === "function") {
       // Wrap functions in a batch to group state changes
       wrapped[key] = (...args: any[]) => {
-        let result: any;
-        batch(() => {
-          result = initialVal(...args);
-        });
-        
-        if (result instanceof Promise) {
-          return result.finally(() => {
-             // We could potentially batch here too if we had a way to wrap the resolution
+        try {
+          let result: any;
+          batch(() => {
+            result = initialVal(...args);
+          });
+
+          if (result instanceof Promise) {
+            return result
+              .catch((err) => {
+                engineWarn({
+                  category: "State",
+                  file,
+                  what: `Async function '${key}' in '${file}' threw an error.`,
+                  why: err.message,
+                  fix:
+                    `Handle the error inside '${key}' with try/catch.\n` +
+                    `  export async function ${key}() {\n` +
+                    `    try { ... }\n` +
+                    `    catch(e) { error = e.message }\n` +
+                    `  }`,
+                });
+                throw err;
+              });
+          }
+          return result;
+        } catch (e: any) {
+          engineError({
+            category: "State",
+            file,
+            what: `Function '${key}' in '${file}' threw an error.`,
+            why: e.message,
+            fix: `Check the implementation of '${key}' in '${file}'.`,
           });
         }
-        return result;
       };
     } else {
       // Create or get the signal for this property
       if (!fileSignals.has(key)) {
-        fileSignals.set(key, new Signal(initialVal));
+        const s = new Signal(initialVal);
+        s.label = file;
+        fileSignals.set(key, s);
       }
       const signal = fileSignals.get(key)!;
 
       Object.defineProperty(wrapped, key, {
         get() {
+          // warn if value is undefined and probably not initialised
+          if (signal.value === undefined) {
+            engineWarn({
+              category: "State",
+              file,
+              what: `State variable '${key}' in '${file}' is undefined.`,
+              why: "Variable was declared but not given an initial value.",
+              fix:
+                `Give '${key}' an initial value.\n` +
+                `  export let ${key} = []    ← for arrays\n` +
+                `  export let ${key} = null  ← for nullable\n` +
+                `  export let ${key} = ''    ← for strings`,
+            });
+          }
+
           const val = signal.value;
           if (val && typeof val === "object") {
             return wrapObject(file, key, val);
@@ -55,7 +113,21 @@ export function wrapState<T extends Record<string, any>>(
     }
   });
 
-  return wrapped as T;
+  // proxy to catch direct mutation from outside the state file
+  return new Proxy(wrapped as T, {
+    set(target, prop, value) {
+      engineWarn({
+        category: "State",
+        file,
+        what: `Direct mutation of '${String(prop)}' from outside '${file}'.`,
+        why:
+          "State variables should only be updated through exported functions.",
+        fix: `Call the exported function instead.\n` +
+          `  Available functions: ${exportedFunctions.join(", ")}`,
+      });
+      return Reflect.set(target, prop, value);
+    },
+  });
 }
 
 function wrapObject(file: string, path: string, obj: any): any {
