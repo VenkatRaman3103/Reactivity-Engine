@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "jsx": "react",
+        "jsxFactory": "__h",
+        "jsxFragmentFactory": "__Fragment",
+        "baseUrl": ".",
+        "paths": {
+            "@engine/*": ["src/*"]
+        },
+        "types": ["node"]
+    },
+    "include": [
+        "src",
+        "compiler",
+        "example"
+    ]
+}
