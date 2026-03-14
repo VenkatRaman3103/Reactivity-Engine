@@ -116,10 +116,10 @@ export function wrapState<T extends Record<string, any>>(
   // proxy to catch direct mutation from outside the state file
   return new Proxy(wrapped as T, {
     set(target, prop, value) {
+      const stateFile = file.split('/').pop() || file;
       engineWarn({
         category: "State",
-        file,
-        what: `Direct mutation of '${String(prop)}' from outside '${file}'.`,
+        what: `Direct mutation of '${String(prop)}' belonging to '${stateFile}'.`,
         why:
           "State variables should only be updated through exported functions.",
         fix: `Call the exported function instead.\n` +

@@ -23,10 +23,6 @@ export function transformState(code: string, currentFilePath: string): StateTran
     });
   }
 
-  if (matches.length === 0) {
-    return { code, mappings: new Map() };
-  }
-
   let result = code;
   const mappings = new Map<string, string>();
   let nsCounter = 0;
@@ -46,6 +42,19 @@ export function transformState(code: string, currentFilePath: string): StateTran
       mappings.set(name, nsAlias);
     });
   });
+
+  // also transform dynamic imports: import('...state')
+  const dynRegex = /import\s*\(['"]([^'"]+\.state(?:\.ts)?)['"]\)/g;
+  let dynMatch: RegExpExecArray | null;
+  while ((dynMatch = dynRegex.exec(result)) !== null) {
+    const full = dynMatch[0];
+    const path = dynMatch[1];
+    let absolutePath = path.startsWith(".") ? resolve(currentDir, path) : path;
+    if (!absolutePath.endsWith(".ts")) absolutePath += ".ts";
+
+    const wrap = `(import('${path}').then(m => __wrapState('${absolutePath}', m)))`;
+    result = result.replace(full, wrap);
+  }
 
   return { code: result, mappings };
 }

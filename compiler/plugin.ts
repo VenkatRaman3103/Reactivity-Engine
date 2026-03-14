@@ -30,6 +30,33 @@ export function engine(): Plugin {
       };
     },
 
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url?.startsWith("/__engine-ls")) {
+          const url = new URL(req.url, `http://${req.headers.host}`);
+          const relPath = url.searchParams.get("path");
+          if (!relPath) return next();
+
+          try {
+            const { readdirSync, statSync } = await import("fs");
+            const fullPath = resolve(process.cwd(), relPath);
+            const parent = resolve(fullPath, "..");
+            const files = readdirSync(parent).map(f => {
+              const s = statSync(resolve(parent, f));
+              return { name: f, isDir: s.isDirectory() };
+            });
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ files }));
+          } catch (e) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: String(e) }));
+          }
+          return;
+        }
+        next();
+      });
+    },
+
     transform(code: string, id: string) {
       const cleanId = id.split("?")[0];
       const isTSX = cleanId.endsWith(".tsx");

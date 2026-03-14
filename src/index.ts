@@ -7,6 +7,12 @@ export * from "./reactive";
 export * from "./ref";
 export * from "./scheduler";
 export * from "./state";
+export * from "./errors";
+export {
+  showOverlay,
+  dismissOverlay,
+  type OverlayError,
+} from "./error-overlay";
 
 export { h as __h } from "./dom";
 

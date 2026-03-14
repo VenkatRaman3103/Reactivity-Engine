@@ -12,26 +12,28 @@ import { page } from "../state/app.state";
 export default function ErrorDemo() {
   // 1. TEST: Direct Mutation Warning
   // State variables should only be updated through exported functions.
-  /*
   onMount(() => {
-    console.log("%c[Test] Attempting direct mutation...", "color: blue; font-weight: bold;");
+    console.log(
+      "%c[Test] Attempting direct mutation...",
+      "color: #3498db; font-weight: bold;",
+    );
     // We import the wrapped state to try and mutate it
-    import("../state/app.state").then(mod => {
-        // @ts-ignore
-        mod.page = "broken"; 
+    import("../state/app.state").then((mod) => {
+      // @ts-ignore
+      mod.page = "broken";
     });
   });
-  */
 
   // 2. TEST: Circular Dependency Error
-  /*
   const a: any = derive(() => b.value + 1);
   const b: any = derive(() => a.value + 1);
   onMount(() => {
-    console.log("%c[Test] Triggering circular dependency...", "color: blue; font-weight: bold;");
+    console.log(
+      "%c[Test] Triggering circular dependency...",
+      "color: #3498db; font-weight: bold;",
+    );
     console.log(a.value);
   });
-  */
 
   return (
     <div
@@ -76,10 +78,10 @@ export default function ErrorDemo() {
       />
 
       {/* 3. TEST: Component returning Nothing (Error) */}
-      {/* <BrokenComponent /> */}
+      <BrokenComponent />
 
       {/* 4. TEST: Component returning Invalid Type (Error) */}
-      {/* <InvalidTypeComponent /> */}
+      <InvalidTypeComponent />
     </div>
   );
 }
@@ -89,6 +91,7 @@ function BrokenComponent() {
   return null;
 }
 
-function InvalidTypeComponent() {
+function InvalidTypeComponent(): any {
+  // @ts-ignore - intentional bad type for testing the error system
   return { name: "bob" };
 }

@@ -1,56 +1,87 @@
-// src/errors.ts
+import { showOverlay, parseStack } from "./error-overlay";
 
-// @ts-ignore - import.meta.env is provided by Vite
-const isDev = import.meta.env.DEV
+// @ts-ignore
+const isDev = import.meta.env.DEV;
 
 export type ErrorCategory =
-  | 'State'
-  | 'Component'
-  | 'Compiler'
-  | 'Reactivity'
-  | 'Navigation'
-  | 'Derived'
-  | 'Effect'
-  | 'DOM'
-  | 'Mount'
+  | "State"
+  | "Component"
+  | "Compiler"
+  | "Reactivity"
+  | "Navigation"
+  | "Derived"
+  | "Effect"
+  | "DOM"
+  | "Mount";
 
 export interface EngineError {
-  category: ErrorCategory
-  what:     string
-  why?:     string
-  fix:      string
-  file?:    string
+  category: ErrorCategory;
+  what: string;
+  why?: string;
+  fix?: string;
+  file?: string;
+  line?: number;
 }
 
-export function engineError(err: EngineError): never {
+export function engineError(opts: EngineError): never {
+  const err = new Error(`[Engine] ${opts.category}: ${opts.what}`);
+
   if (isDev) {
-    const file = err.file ? ` — ${err.file}` : ''
-    const why  = err.why  ? `\nWhy:  ${err.why}` : ''
+    const parsed = parseStack(err.stack ?? "");
+
+    showOverlay({
+      category: opts.category,
+      severity: "error",
+      what: opts.what,
+      why: opts.why,
+      fix: opts.fix,
+      file: opts.file ?? parsed.file ?? undefined,
+      line: opts.line ?? parsed.line ?? undefined,
+      stack: err.stack,
+    });
+
     console.error(
-      `\n[Engine] ${err.category} Error${file}` +
-      `\nWhat: ${err.what}`                      +
-      why                                        +
-      `\nFix:  ${err.fix}\n`
-    )
+      `\n[Engine] ${opts.category} Error` +
+        `\nWhat: ${opts.what}` +
+        (opts.why ? `\nWhy:  ${opts.why}` : "") +
+        (opts.fix ? `\nFix:  ${opts.fix}` : "") +
+        "\n",
+    );
   }
-  throw new Error(`[Engine] ${err.category}: ${err.what}`)
+
+  throw err;
 }
 
-export function engineWarn(err: Omit<EngineError, 'fix'> & { fix?: string }) {
-  if (!isDev) return
-  const file = err.file ? ` — ${err.file}` : ''
-  const why  = err.why  ? `\nWhy:  ${err.why}` : ''
-  const fix  = err.fix  ? `\nFix:  ${err.fix}` : ''
+export function engineWarn(opts: EngineError) {
+  if (!isDev) return;
+
+  const err = new Error();
+  const parsed = parseStack(err.stack ?? "");
+
+  showOverlay({
+    category: opts.category,
+    severity: "warning",
+    what: opts.what,
+    why: opts.why,
+    fix: opts.fix,
+    file: opts.file ?? parsed.file ?? undefined,
+    line: opts.line ?? parsed.line ?? undefined,
+    stack: err.stack,
+  });
+
   console.warn(
-    `\n[Engine] ${err.category} Warning${file}` +
-    `\nWhat: ${err.what}`                        +
-    why                                          +
-    fix                                          +
-    '\n'
-  )
+    `\n[Engine] ${opts.category} Warning` +
+      `\nWhat: ${opts.what}` +
+      (opts.why ? `\nWhy:  ${opts.why}` : "") +
+      (opts.fix ? `\nFix:  ${opts.fix}` : "") +
+      "\n",
+  );
 }
 
 export function engineInfo(category: ErrorCategory, message: string) {
-  if (!isDev) return
-  console.info(`[Engine] ${category}: ${message}`)
+  if (!isDev) return;
+  console.log(
+    `%c[Engine] ${category}: ${message}`,
+    "color: #3498db; font-weight: bold;",
+  );
 }
