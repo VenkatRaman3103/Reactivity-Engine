@@ -12,28 +12,28 @@ import { page } from "../state/app.state";
 export default function ErrorDemo() {
   // 1. TEST: Direct Mutation Warning
   // State variables should only be updated through exported functions.
-  // onMount(() => {
-  //   console.log(
-  //     "%c[Test] Attempting direct mutation...",
-  //     "color: #3498db; font-weight: bold;",
-  //   );
-  //   // We import the wrapped state to try and mutate it
-  //   import("../state/app.state").then((mod) => {
-  //     // @ts-ignore
-  //     mod.page = "broken";
-  //   });
-  // });
+  onMount(() => {
+    console.log(
+      "%c[Test] Attempting direct mutation...",
+      "color: #3498db; font-weight: bold;",
+    );
+    // We import the wrapped state to try and mutate it
+    import("../state/app.state").then((mod) => {
+      // @ts-ignore
+      mod.page = "broken";
+    });
+  });
 
   // 2. TEST: Circular Dependency Error
-  // const a: any = derive(() => b.value + 1);
-  // const b: any = derive(() => a.value + 1);
-  // onMount(() => {
-  //   console.log(
-  //     "%c[Test] Triggering circular dependency...",
-  //     "color: #3498db; font-weight: bold;",
-  //   );
-  //   console.log(a.value);
-  // });
+  const a: any = derive(() => b.value + 1);
+  const b: any = derive(() => a.value + 1);
+  onMount(() => {
+    console.log(
+      "%c[Test] Triggering circular dependency...",
+      "color: #3498db; font-weight: bold;",
+    );
+    console.log(a.value);
+  });
 
   return (
     <div

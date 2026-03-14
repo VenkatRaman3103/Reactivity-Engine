@@ -1,7 +1,7 @@
 // src/error-overlay.ts
 
 // @ts-ignore - import.meta.env is provided by Vite
-const isDev = import.meta.env.DEV
+const isDev = import.meta.env.DEV;
 
 // -----------------------------------------------
 // styles
@@ -34,7 +34,7 @@ const styles = `
     display:       flex;
     flex-direction: row;
     box-shadow:    0 30px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
-    border:        1px solid rgba(255, 255, 255, 0.05);
+    // border:        1px solid rgba(255, 255, 255, 0.05);
     overflow:      hidden;
   }
 
@@ -398,46 +398,46 @@ const styles = `
   .engine-warning .engine-btn-copy {
     background: #ffaa44;
   }
-`
+`;
 
 // -----------------------------------------------
 // types
 // -----------------------------------------------
 
-export type Severity = 'error' | 'warning'
+export type Severity = "error" | "warning";
 
 export interface OverlayError {
-  category:  string
-  severity:  Severity
-  what:      string
-  why?:      string
-  file?:     string
-  line?:     number
-  col?:      number
-  source?:   string       // full source of the file
-  fix?:      string
-  stack?:    string
+  category: string;
+  severity: Severity;
+  what: string;
+  why?: string;
+  file?: string;
+  line?: number;
+  col?: number;
+  source?: string; // full source of the file
+  fix?: string;
+  stack?: string;
 }
 
 // -----------------------------------------------
 // overlay state
 // -----------------------------------------------
 
-let overlayEl:  HTMLElement | null = null
-let styleEl:    HTMLStyleElement | null = null
-const errors:     OverlayError[] = []
-let current     = 0
+let overlayEl: HTMLElement | null = null;
+let styleEl: HTMLStyleElement | null = null;
+const errors: OverlayError[] = [];
+let current = 0;
 
 // -----------------------------------------------
 // inject styles once
 // -----------------------------------------------
 
 function injectStyles() {
-  if (styleEl) return
-  styleEl = document.createElement('style')
-  styleEl.id = 'engine-overlay-styles'
-  styleEl.textContent = styles
-  document.head.appendChild(styleEl)
+  if (styleEl) return;
+  styleEl = document.createElement("style");
+  styleEl.id = "engine-overlay-styles";
+  styleEl.textContent = styles;
+  document.head.appendChild(styleEl);
 }
 
 // -----------------------------------------------
@@ -484,20 +484,20 @@ export function parseStack(stack: string): {
         .replace(/^\//, "");
 
       // Strip query parameters that Vite adds for cache busting
-      if (file.includes('?')) {
-        file = file.split('?')[0];
+      if (file.includes("?")) {
+        file = file.split("?")[0];
       }
 
-      // If it's a full path but we're in a dev environment, 
+      // If it's a full path but we're in a dev environment,
       // let's try to keep it relative to the root for fetching
       if (file.includes(window.location.host)) {
-          file = file.split(window.location.host).pop() || file;
+        file = file.split(window.location.host).pop() || file;
       }
-      
+
       // Remove Vite /@fs/ prefix which breaks physical file locating
       // BUT keep it if it's part of an absolute path we want to fetch safely
-      if (file.startsWith('@fs/')) {
-        file = '/' + file;
+      if (file.startsWith("@fs/")) {
+        file = "/" + file;
       }
 
       file = file.replace(/^\/\//, "/");
@@ -517,14 +517,16 @@ export function parseStack(stack: string): {
 // fetch directory siblings
 // -----------------------------------------------
 
-async function fetchSiblings(file: string): Promise<{ name: string; isDir: boolean }[]> {
+async function fetchSiblings(
+  file: string,
+): Promise<{ name: string; isDir: boolean }[]> {
   try {
-    const res = await fetch(`/__engine-ls?path=${encodeURIComponent(file)}`)
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.files || []
+    const res = await fetch(`/__engine-ls?path=${encodeURIComponent(file)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.files || [];
   } catch {
-    return []
+    return [];
   }
 }
 
@@ -536,12 +538,12 @@ async function fetchSource(file: string): Promise<string | null> {
   try {
     // If it's already an absolute path or has /@fs/, use it as is
     // Otherwise, ensure it starts with a /
-    const url = file.startsWith('/') ? file : `/${file}`
-    const res = await fetch(url)
-    if (!res.ok) return null
-    return res.text()
+    const url = file.startsWith("/") ? file : `/${file}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.text();
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -550,33 +552,35 @@ async function fetchSource(file: string): Promise<string | null> {
 // -----------------------------------------------
 
 function renderCodeBlock(
-  source:    string,
+  source: string,
   errorLine: number,
-  context:   number = 4
+  context: number = 4,
 ): string {
-  const lines = source.split('\n')
-  const start = Math.max(0, errorLine - context - 1)
-  const end   = Math.min(lines.length, errorLine + context)
+  const lines = source.split("\n");
+  const start = Math.max(0, errorLine - context - 1);
+  const end = Math.min(lines.length, errorLine + context);
 
   return lines
     .slice(start, end)
     .map((code, i) => {
-      const num     = start + i + 1
-      const isError = num === errorLine
-      const marker  = isError ? '<span class="engine-error-marker">← target</span>' : ''
-      const cls     = isError ? 'engine-code-line error-line' : 'engine-code-line'
+      const num = start + i + 1;
+      const isError = num === errorLine;
+      const marker = isError
+        ? '<span class="engine-error-marker">← target</span>'
+        : "";
+      const cls = isError ? "engine-code-line error-line" : "engine-code-line";
       const escaped = code
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
       return (
         `<div class="${cls}">` +
         `<span class="line-num">${num}</span>` +
         `<span class="line-code">${escaped}${marker}</span>` +
         `</div>`
-      )
+      );
     })
-    .join('')
+    .join("");
 }
 
 // -----------------------------------------------
@@ -584,45 +588,46 @@ function renderCodeBlock(
 // -----------------------------------------------
 
 async function renderOverlay(err: OverlayError) {
-  injectStyles()
+  injectStyles();
 
-  let file   = err.file
-  let line   = err.line
-  let source = err.source
+  let file = err.file;
+  let line = err.line;
+  let source = err.source;
 
   // parse from stack if not provided
   if (err.stack && (!file || !line)) {
-    const parsed = parseStack(err.stack)
-    file  = file  ?? parsed.file  ?? undefined
-    line  = line  ?? parsed.line  ?? undefined
+    const parsed = parseStack(err.stack);
+    file = file ?? parsed.file ?? undefined;
+    line = line ?? parsed.line ?? undefined;
   }
 
   // fetch source if we have a file but no source
   if (file && !source) {
-    source = await fetchSource(file) ?? undefined
+    source = (await fetchSource(file)) ?? undefined;
   }
 
-  const isWarning    = err.severity === 'warning'
-  const severityClass = isWarning ? 'engine-warning' : ''
-  const severityLabel = isWarning ? 'Warning' : 'Error'
+  const isWarning = err.severity === "warning";
+  const severityClass = isWarning ? "engine-warning" : "";
+  const severityLabel = isWarning ? "Warning" : "Error";
 
   // Clean file path (strip query params)
   // Clean file path (strip query params and relativize)
-  let cleanFile = file ? file.split('?')[0] : '';
-  
+  let cleanFile = file ? file.split("?")[0] : "";
+
   // Relativize: strip common prefixes if absolute
-  const projectRoot = 'Reactivity-Engine';
+  const projectRoot = "Reactivity-Engine";
   if (cleanFile.includes(projectRoot)) {
-    cleanFile = cleanFile.split(projectRoot).pop()?.replace(/^\//, '') || cleanFile;
+    cleanFile =
+      cleanFile.split(projectRoot).pop()?.replace(/^\//, "") || cleanFile;
   }
 
-  const fileParts = cleanFile.split('/');
-  const fileName  = fileParts.pop() || '';
-  const dirParts  = fileParts.filter(Boolean);
+  const fileParts = cleanFile.split("/");
+  const fileName = fileParts.pop() || "";
+  const dirParts = fileParts.filter(Boolean);
 
   // Generate Tree View HTML
   let treeItemsHtml = `<div class="engine-tree-item">.</div>`;
-  
+
   // Show base directories with indentation
   dirParts.forEach((part, i) => {
     const indent = "&nbsp;".repeat((i + 1) * 2);
@@ -631,29 +636,32 @@ async function renderOverlay(err: OverlayError) {
 
   // fetch siblings for the file level with further indentation
   const levelIndent = "&nbsp;".repeat((dirParts.length + 1) * 2);
-  const siblings = (file && file !== 'unknown') ? await fetchSiblings(file) : [];
-  
+  const siblings = file && file !== "unknown" ? await fetchSiblings(file) : [];
+
   if (siblings.length > 0) {
-    const targetIdx = siblings.findIndex(s => s.name === fileName);
+    const targetIdx = siblings.findIndex((s) => s.name === fileName);
     if (targetIdx !== -1) {
       const start = Math.max(0, targetIdx - 3);
-      const end   = Math.min(siblings.length, targetIdx + 4);
-      
-      siblings.slice(start, end).forEach(s => {
+      const end = Math.min(siblings.length, targetIdx + 4);
+
+      siblings.slice(start, end).forEach((s) => {
         const isActive = s.name === fileName;
-        const cls = isActive ? 'engine-tree-item active' : 'engine-tree-item sibling';
-        const label = s.name + (isActive && line ? `:${line}` : '');
+        const cls = isActive
+          ? "engine-tree-item active"
+          : "engine-tree-item sibling";
+        const label = s.name + (isActive && line ? `:${line}` : "");
         treeItemsHtml += `<div class="${cls}">${levelIndent}${label}</div>`;
       });
     } else {
-      treeItemsHtml += `<div class="engine-tree-item active">${levelIndent}${fileName}${line ? `:${line}` : ''}</div>`;
+      treeItemsHtml += `<div class="engine-tree-item active">${levelIndent}${fileName}${line ? `:${line}` : ""}</div>`;
     }
   } else if (fileName) {
-    treeItemsHtml += `<div class="engine-tree-item active">${levelIndent}${fileName}${line ? `:${line}` : ''}</div>`;
+    treeItemsHtml += `<div class="engine-tree-item active">${levelIndent}${fileName}${line ? `:${line}` : ""}</div>`;
   }
 
-  const codeBlock = (source && line)
-    ? `<div class="engine-section">
+  const codeBlock =
+    source && line
+      ? `<div class="engine-section">
          <div class="engine-section-label">Source</div>
          <div class="engine-code-block">
            <div class="engine-code-header">
@@ -663,54 +671,56 @@ async function renderOverlay(err: OverlayError) {
            ${renderCodeBlock(source, line)}
          </div>
        </div>`
-    : ''
+      : "";
 
   const fileBlock = cleanFile
     ? `<div class="engine-section">
          <div class="engine-section-label">Location (Context)</div>
          <div class="engine-tree">${treeItemsHtml}</div>
        </div>`
-    : ''
+    : "";
 
   const whyBlock = err.why
     ? `<div class="engine-section">
          <div class="engine-section-label">Why</div>
          <div class="engine-why">${err.why}</div>
        </div>`
-    : ''
+    : "";
 
   const fixBlock = err.fix
     ? `<div class="engine-section">
          <div class="engine-section-label">How to fix</div>
          <div class="engine-fix-block">${err.fix}</div>
        </div>`
-    : ''
+    : "";
 
   const stackLines = err.stack
-    ?.split('\n')
-    .filter(l => !l.includes('error-overlay') && !l.includes('errors.ts'))
-    .map(l => {
-      const isUserCode = !l.includes('node_modules')
-      return isUserCode
-        ? `<span class="stack-highlight">${l}</span>`
-        : l
+    ?.split("\n")
+    .filter((l) => !l.includes("error-overlay") && !l.includes("errors.ts"))
+    .map((l) => {
+      const isUserCode = !l.includes("node_modules");
+      return isUserCode ? `<span class="stack-highlight">${l}</span>` : l;
     })
-    .join('\n')
+    .join("\n");
 
   const stackBlock = stackLines
     ? `<div class="engine-section">
          <div class="engine-section-label">Stack Trace</div>
          <div class="engine-stack-block">${stackLines}</div>
        </div>`
-    : ''
+    : "";
 
-  const sidebarHtml = errors.length > 1 ? `
+  const sidebarHtml =
+    errors.length > 1
+      ? `
     <div id="engine-overlay-sidebar">
-      ${errors.map((e, idx) => {
-        const isActive = idx === current ? 'active' : '';
-        const severityClass = e.severity === 'warning' ? 'engine-warning' : '';
-        const title = e.what || 'Unknown Error';
-        return `
+      ${errors
+        .map((e, idx) => {
+          const isActive = idx === current ? "active" : "";
+          const severityClass =
+            e.severity === "warning" ? "engine-warning" : "";
+          const title = e.what || "Unknown Error";
+          return `
           <div class="engine-sidebar-item ${isActive} ${severityClass}" data-index="${idx}">
             <div class="engine-sidebar-meta">
               <span>${e.category}</span>
@@ -719,9 +729,11 @@ async function renderOverlay(err: OverlayError) {
             <div class="engine-sidebar-title">${title}</div>
           </div>
         `;
-      }).join('')}
+        })
+        .join("")}
     </div>
-  ` : '';
+  `
+      : "";
 
   const html = `
     <div id="engine-overlay" class="${severityClass}">
@@ -757,7 +769,7 @@ async function renderOverlay(err: OverlayError) {
 
       </div>
     </div>
-  `
+  `;
 
   return html;
 }
@@ -819,18 +831,18 @@ const navStyles = `
 // -----------------------------------------------
 
 export async function showOverlay(err: OverlayError) {
-  if (!isDev) return
+  if (!isDev) return;
 
   // Add navigation styles if not already there
-  if (!document.getElementById('engine-nav-styles')) {
-    const s = document.createElement('style');
-    s.id = 'engine-nav-styles';
+  if (!document.getElementById("engine-nav-styles")) {
+    const s = document.createElement("style");
+    s.id = "engine-nav-styles";
     s.textContent = navStyles;
     document.head.appendChild(s);
   }
 
-  errors.push(err)
-  current = errors.length - 1
+  errors.push(err);
+  current = errors.length - 1;
 
   await updateUI();
 }
@@ -853,22 +865,22 @@ async function updateUI() {
 
   const html = await renderOverlay(err);
 
-  // Remove existing overlay *after* await to avoid race conditions 
+  // Remove existing overlay *after* await to avoid race conditions
   // where multiple instances get appended to the DOM.
   if (overlayEl) {
     overlayEl.remove();
   }
 
-  overlayEl = document.createElement('div')
-  overlayEl.innerHTML = html
-  document.body.appendChild(overlayEl)
+  overlayEl = document.createElement("div");
+  overlayEl.innerHTML = html;
+  document.body.appendChild(overlayEl);
 
   // sidebar functionality
-  const sidebarItems = overlayEl.querySelectorAll('.engine-sidebar-item');
-  sidebarItems.forEach(el => {
-    el.addEventListener('click', (e) => {
+  const sidebarItems = overlayEl.querySelectorAll(".engine-sidebar-item");
+  sidebarItems.forEach((el) => {
+    el.addEventListener("click", (e) => {
       const target = e.currentTarget as HTMLElement;
-      const idx = parseInt(target.dataset.index || '0', 10);
+      const idx = parseInt(target.dataset.index || "0", 10);
       if (idx !== current) {
         current = idx;
         updateUI();
@@ -878,42 +890,49 @@ async function updateUI() {
 
   // dismiss button
   overlayEl
-    .querySelector('#engine-btn-dismiss')
-    ?.addEventListener('click', dismissOverlay)
+    .querySelector("#engine-btn-dismiss")
+    ?.addEventListener("click", dismissOverlay);
 
   // copy button
-  overlayEl
-    .querySelector('#engine-btn-copy')
-    ?.addEventListener('click', () => {
-      const text = [
-        `[Engine] ${err.category} ${err.severity}`,
-        `What: ${err.what}`,
-        err.why   ? `Why:  ${err.why}`  : '',
-        err.file  ? `File: ${err.file}` : '',
-        err.line  ? `Line: ${err.line}` : '',
-        err.fix   ? `Fix:\n${err.fix}`  : '',
-        err.stack ? `\nStack:\n${err.stack}` : ''
-      ].filter(Boolean).join('\n')
+  overlayEl.querySelector("#engine-btn-copy")?.addEventListener("click", () => {
+    const text = [
+      `[Engine] ${err.category} ${err.severity}`,
+      `What: ${err.what}`,
+      err.why ? `Why:  ${err.why}` : "",
+      err.file ? `File: ${err.file}` : "",
+      err.line ? `Line: ${err.line}` : "",
+      err.fix ? `Fix:\n${err.fix}` : "",
+      err.stack ? `\nStack:\n${err.stack}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
-      navigator.clipboard.writeText(text)
-        .then(() => {
-          const btn = overlayEl?.querySelector('#engine-btn-copy') as HTMLButtonElement
-          if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy' }, 2000) }
-        })
-    })
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = overlayEl?.querySelector(
+        "#engine-btn-copy",
+      ) as HTMLButtonElement;
+      if (btn) {
+        btn.textContent = "Copied!";
+        setTimeout(() => {
+          btn.textContent = "Copy";
+        }, 2000);
+      }
+    });
+  });
 
   // click outside to dismiss
-  overlayEl
-    .querySelector('#engine-overlay')
-    ?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).id === 'engine-overlay') dismissOverlay()
-    })
+  overlayEl.querySelector("#engine-overlay")?.addEventListener("click", (e) => {
+    if ((e.target as HTMLElement).id === "engine-overlay") dismissOverlay();
+  });
 
   // escape to dismiss
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') { dismissOverlay(); window.removeEventListener('keydown', onKey) }
+    if (e.key === "Escape") {
+      dismissOverlay();
+      window.removeEventListener("keydown", onKey);
+    }
   };
-  window.addEventListener('keydown', onKey)
+  window.addEventListener("keydown", onKey);
 
   isUpdating = false;
   if (pendingUpdate) {
@@ -923,8 +942,8 @@ async function updateUI() {
 }
 
 export function dismissOverlay() {
-  overlayEl?.remove()
-  overlayEl = null
+  overlayEl?.remove();
+  overlayEl = null;
   // Clear errors when dismissed
   errors.length = 0;
   current = 0;

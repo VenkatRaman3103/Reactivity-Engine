@@ -4,7 +4,7 @@ export let theme: 'dark' | 'light' = 'dark';
 
 export function setActiveTab(tab: string) {
   activeTab = tab;
-  isSidebarOpen = false; // Close on mobile when selecting
+  if (window.innerWidth <= 1024) isSidebarOpen = false; // Close only on mobile
 }
 
 export function toggleSidebar() {
