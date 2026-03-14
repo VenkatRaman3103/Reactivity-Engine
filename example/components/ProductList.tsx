@@ -28,13 +28,19 @@ export default function ProductList() {
   ));
 
   return (
-    <div class="product-list">
+    <div style={{ padding: '20px', border: '2px solid black', fontFamily: 'monospace' }}>
       <h1>Products</h1>
       {loading && <p>Loading...</p>}
       {error && <p>{error}</p>}
       {products.map((p) => (
         <div
-          class={selectedId === p.id ? "product selected" : "product"}
+          style={{ 
+            padding: '15px', 
+            borderBottom: '2px solid black', 
+            cursor: 'pointer',
+            backgroundColor: selectedId === p.id ? 'black' : 'transparent',
+            color: selectedId === p.id ? 'white' : 'black'
+          }}
           onClick={() => selectProduct(p.id)}
         >
           <h3>{p.title}</h3>
@@ -44,7 +50,7 @@ export default function ProductList() {
       ))}
       {products.length > 0 && <p>Total: ${total.value.toFixed(2)}</p>}
       {selected.value && (
-        <div class="detail">
+        <div style={{ marginTop: '20px', padding: '20px', border: '4px solid black' }}>
           <h2>{selected.value.title}</h2>
           <button onClick={clearSelection}>Close</button>
         </div>

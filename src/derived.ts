@@ -1,5 +1,5 @@
 import { engineError, engineWarn } from "./errors";
-import { pushObserver, popObserver, Observer, Signal } from "./reactive";
+import { pushObserver, popObserver, Observer, Signal, getActiveObserver } from "./reactive";
 
 export function derive<T>(fn: () => T): { readonly value: T } {
   if (typeof fn !== "function") {
@@ -19,9 +19,12 @@ export function derive<T>(fn: () => T): { readonly value: T } {
   class Derived extends Signal<T> implements Observer {
     dependencies = new Set<Set<Observer>>();
     private dirty = true;
+    public depth: number;
 
     constructor(private fn: () => T) {
       super(undefined as any);
+      const active = getActiveObserver();
+      this.depth = active ? (active.depth + 1 || 0) : 0;
     }
 
     get value(): T {

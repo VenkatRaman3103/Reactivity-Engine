@@ -1,9 +1,11 @@
 import { engineWarn }   from './errors'
 import { Signal }       from './reactive'
 import { h }            from './dom'
+import { createEffect } from './effect'
 
 // global tracker for async operations
 const pendingCount = new Signal(0)
+pendingCount.label = 'engine:suspense:pendingCount'
 
 export function trackAsync<T>(promise: Promise<T>): Promise<T> {
   pendingCount.value++
@@ -33,11 +35,19 @@ export function Suspense(props: SuspenseProps): Node {
     })
   }
 
-  // Use the Reactivity Engine's native DOM reconciliation!
-  // By passing a function as a child to the surrounding div, 
-  // the Engine automatically tracks the reactive `pendingCount.value` Signal 
-  // and efficiently swaps out the DOM tree when it changes!
-  return h('div', { 'data-suspense': '' }, 
-    () => pendingCount.value > 0 ? props.fallback : props.children
-  )
+  // Refactored to avoid "Suspense Loop":
+  // Instead of swapping nodes (which unmounts and remounts components, 
+  // triggering their onMount effects repeatedly), we render BOTH and toggle visibility.
+  
+  const content = h('div', { 'data-suspense-content': '' }, props.children);
+  const fallback = h('div', { 'data-suspense-fallback': '' }, props.fallback);
+  const container = h('div', { 'data-suspense': '' }, content, fallback);
+
+  createEffect(() => {
+    const active = pendingCount.value > 0;
+    (content as HTMLElement).style.display = active ? 'none' : '';
+    (fallback as HTMLElement).style.display = active ? '' : 'none';
+  });
+
+  return container;
 }

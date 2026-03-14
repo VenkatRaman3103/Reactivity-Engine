@@ -25,6 +25,7 @@ export interface EngineError {
   example?: string;
   file?: string;
   line?: number;
+  silent?: boolean;
 }
 
 export function engineError(opts: EngineError): never {
@@ -62,24 +63,28 @@ export function engineWarn(opts: EngineError) {
   const err = new Error();
   const parsed = parseStack(err.stack ?? "");
 
-  showOverlay({
-    category: opts.category,
-    severity: "warning",
-    what: opts.what,
-    why: opts.why,
-    fix: opts.fix,
-    file: opts.file ?? parsed.file ?? undefined,
-    line: opts.line ?? parsed.line ?? undefined,
-    stack: err.stack,
-  });
+  if (!opts.silent) {
+    showOverlay({
+      category: opts.category,
+      severity: "warning",
+      what: opts.what,
+      why: opts.why,
+      fix: opts.fix,
+      file: opts.file ?? parsed.file ?? undefined,
+      line: opts.line ?? parsed.line ?? undefined,
+      stack: err.stack,
+    });
+  }
 
-  console.warn(
-    `\n[Engine] ${opts.category} Warning` +
-      `\nWhat: ${opts.what}` +
-      (opts.why ? `\nWhy:  ${opts.why}` : "") +
-      (opts.fix ? `\nFix:  ${opts.fix}` : "") +
-      "\n",
-  );
+  if (!opts.silent) {
+    console.warn(
+      `\n[Engine] ${opts.category} Warning` +
+        `\nWhat: ${opts.what}` +
+        (opts.why ? `\nWhy:  ${opts.why}` : "") +
+        (opts.fix ? `\nFix:  ${opts.fix}` : "") +
+        "\n",
+    );
+  }
 }
 
 export function engineInfo(category: ErrorCategory, message: string) {

@@ -16,15 +16,15 @@ export default function Cart() {
   const count = derive(() => items.reduce((s, i) => s + i.quantity, 0));
 
   onMount(() => {
-    console.log("Cart mounted");
+    // Cart mounted
   });
 
   return (
-    <div class="cart">
+    <div style={{ padding: '20px', border: '2px solid black', fontFamily: 'monospace' }}>
       <h1>Cart ({count.value})</h1>
       {isEmpty.value && <p>Your cart is empty</p>}
       {items.map((item) => (
-        <div class="cart-item">
+        <div style={{ padding: '15px', borderBottom: '2px solid black', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3>{item.title}</h3>
           <p>${item.price}</p>
           <div>

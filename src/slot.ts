@@ -1,4 +1,5 @@
 import { engineWarn } from './errors'
+import { createEffect } from './effect'
 
 // default slot — renders un-slotted children
 // named slot   — renders child with slot="name" OR props['slot:name']
@@ -9,11 +10,12 @@ export function slot(
 ): Node {
   
   // extract an array of actual DOM nodes to search through
-  const getChildrenArray = (source: any): Node[] => {
-    if (Array.isArray(source)) return source.filter(c => c instanceof Node);
+  const getChildrenArray = (source: any): any[] => {
+    if (Array.isArray(source)) return source;
     if (source instanceof Node) return [source];
-    if (source && Array.isArray(source.children)) return source.children.filter((c: any) => c instanceof Node);
-    if (source && source.children instanceof Node) return [source.children];
+    if (typeof source === 'function') return [source]; // Include reactive thunks
+    if (source && Array.isArray(source.children)) return source.children;
+    if (source && source.children) return [source.children];
     return [];
   };
 
@@ -79,14 +81,20 @@ function resolveChildren(children: any): Node {
     return children
   }
 
+  if (typeof children === 'function') {
+    // It's a reactive thunk!
+    const node = document.createTextNode('');
+    createEffect(() => {
+      const val = children();
+      node.textContent = String(val instanceof Node ? '[Object Node]' : val);
+    });
+    return node;
+  }
+
   if (Array.isArray(children)) {
     const fragment = document.createDocumentFragment()
     children.forEach(child => {
-      if (child instanceof Node) {
-        fragment.appendChild(child)
-      } else if (child !== null && child !== undefined) {
-        fragment.appendChild(document.createTextNode(String(child)))
-      }
+      fragment.appendChild(resolveChildren(child))
     })
     return fragment
   }

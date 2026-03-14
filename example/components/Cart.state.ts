@@ -9,7 +9,6 @@ export let items: CartItem[] = [];
 export let loading: boolean = false;
 
 export function addToCart(p: Omit<CartItem, "quantity">) {
-  console.log('[cart] Adding to cart:', p.title);
   const found = items.find((i) => i.id === p.id);
   items = found
     ? items.map((i) => (i.id === p.id ? { ...i, quantity: i.quantity + 1 } : i))

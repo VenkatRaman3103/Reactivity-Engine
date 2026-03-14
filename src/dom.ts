@@ -1,4 +1,5 @@
 import { createEffect } from "./effect";
+import { pushObserver, popObserver } from "./reactive";
 import { engineError, engineWarn } from "./errors";
 import { reconcile, getKey, KeyedNode } from "./keyed";
 
@@ -26,7 +27,15 @@ export function h(
       props_.children = children.length === 1 ? children[0] : children;
     }
 
-    const result = tag(props_);
+    // Component Isolation: Ensure the component function call itself 
+    // does not subscribe to the parent's reactive context.
+    pushObserver(null);
+    let result: any;
+    try {
+      result = tag(props_);
+    } finally {
+      popObserver();
+    }
 
     // error — component returned nothing
     if (result === null || result === undefined) {
@@ -179,16 +188,26 @@ function applyReactive(parent: Node, fn: () => Child) {
     } else {
       // Cleanup previous nodes
       currentNodes.forEach(n => {
-        n.parentNode?.removeChild(n);
+        if (n.parentNode) {
+          n.parentNode.removeChild(n);
+        }
       });
       currentNodes = [];
 
       const fragment = document.createDocumentFragment();
       children.forEach(c => {
         if (c === null || c === undefined || c === false) return;
+        
         const n = toNode(c);
-        fragment.appendChild(n);
-        currentNodes.push(n);
+        if (n instanceof DocumentFragment) {
+          // Track all individual nodes from the fragment
+          const fragNodes = Array.from(n.childNodes);
+          fragment.appendChild(n);
+          currentNodes.push(...fragNodes);
+        } else {
+          fragment.appendChild(n);
+          currentNodes.push(n);
+        }
       });
 
       marker.parentNode?.insertBefore(fragment, marker);

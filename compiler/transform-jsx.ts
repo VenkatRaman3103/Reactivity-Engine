@@ -1,13 +1,12 @@
 import { transformSync } from "@babel/core";
 
-// state variable mappings: varName -> namespaceAlias
-let stateMappings = new Map<string, string>();
+// Removed global stateMappings to prevent contamination between files
 
-export function setStateMappings(mappings: Map<string, string>) {
-  stateMappings = mappings;
-}
-
-export function transformJSX(code: string, filename: string): string {
+export function transformJSX(
+  code: string,
+  filename: string,
+  stateMappings: Map<string, string> = new Map()
+): string {
   const result = transformSync(code, {
     configFile: false,
     babelrc: false,
@@ -15,8 +14,8 @@ export function transformJSX(code: string, filename: string): string {
       ["@babel/preset-typescript", { allExtensions: true, isTSX: true }],
     ],
     plugins: [
-      renameStateVarsPlugin,
-      reactiveExpressionsPlugin,
+      [renameStateVarsPlugin, { stateMappings }],
+      [reactiveExpressionsPlugin, { stateMappings }],
       transformKeyedJSXPlugin,
       [
         "@babel/plugin-transform-react-jsx",
@@ -39,7 +38,8 @@ export function transformJSX(code: string, filename: string): string {
 function renameStateVarsPlugin({ types: t }: any) {
   return {
     visitor: {
-      Identifier(path: any) {
+      Identifier(path: any, state: any) {
+        const { stateMappings } = state.opts;
         const { name } = path.node;
         if (stateMappings.has(name)) {
           // ensure it's a reference to the module-level state variable, not a local one
@@ -48,6 +48,11 @@ function renameStateVarsPlugin({ types: t }: any) {
              if (t.isMemberExpression(path.parent) && path.parent.property === path.node) return;
              if (t.isVariableDeclarator(path.parent) && path.parent.id === path.node) return;
              if (t.isObjectProperty(path.parent) && path.parent.key === path.node) return;
+             
+             // CRITICAL: Don't rename identifiers in imports!
+             if (t.isImportSpecifier(path.parent)) return;
+             if (t.isImportDefaultSpecifier(path.parent)) return;
+             if (t.isImportNamespaceSpecifier(path.parent)) return;
 
              const nsAlias = stateMappings.get(name)!;
              path.replaceWith(t.memberExpression(t.identifier(nsAlias), t.identifier(name)));
@@ -62,7 +67,8 @@ function renameStateVarsPlugin({ types: t }: any) {
 function reactiveExpressionsPlugin({ types: t }: any) {
   return {
     visitor: {
-      JSXExpressionContainer(path: any) {
+      JSXExpressionContainer(path: any, state: any) {
+        const { stateMappings } = state.opts;
         const expr = path.node.expression;
         if (!expr || expr.type === "JSXEmptyExpression") return;
 
@@ -78,7 +84,7 @@ function reactiveExpressionsPlugin({ types: t }: any) {
         }
 
         // check if expressionreferences any state variables (now as MemberExpressions)
-        if (referencesStateNamespace(expr)) {
+        if (referencesStateNamespace(expr, stateMappings)) {
           // Do not wrap Array.prototype methods like .map if they're root level in JSX
           // because it creates a coarse-grained thunk `() => array.map(...)` which 
           // reconstructs the array elements every time ANY referenced state changes.
@@ -93,7 +99,7 @@ function reactiveExpressionsPlugin({ types: t }: any) {
   };
 }
 
-function referencesStateNamespace(node: any): boolean {
+function referencesStateNamespace(node: any, stateMappings: Map<string, string>): boolean {
   if (!node) return false;
 
   // 1. check if it's a .value access (likely a derive or ref)
@@ -121,11 +127,11 @@ function referencesStateNamespace(node: any): boolean {
   return Object.values(node).some((child) => {
     if (Array.isArray(child)) {
       return child.some(
-        (c) => c && typeof c === "object" && referencesStateNamespace(c),
+        (c) => c && typeof c === "object" && referencesStateNamespace(c, stateMappings),
       );
     }
     if (child && typeof child === "object") {
-      return referencesStateNamespace(child);
+      return referencesStateNamespace(child, stateMappings);
     }
     return false;
   });

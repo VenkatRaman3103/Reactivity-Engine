@@ -5,19 +5,17 @@ import { loadData, data } from "../state/suspense.state";
 function Card({ children }: any) {
   return (
     <div style={{ 
-      border: '1px solid #ddd', 
-      borderRadius: '8px', 
-      overflow: 'hidden',
+      border: '2px solid black', 
       marginBottom: '20px',
       background: 'white'
     }}>
-      <div style={{ background: '#f0f0f0', padding: '12px 16px', fontWeight: 'bold' }}>
+      <div style={{ borderBottom: '2px solid black', padding: '12px 16px', fontWeight: 'bold' }}>
         {slot(children, "header", <span>Default Header</span>)}
       </div>
       <div style={{ padding: '16px' }}>
         {slot(children, "default", <p>No content provided</p>)}
       </div>
-      <div style={{ background: '#fafafa', padding: '12px 16px', borderTop: '1px solid #eee', fontSize: '13px', color: '#666' }}>
+      <div style={{ padding: '12px 16px', borderTop: '2px solid black', fontSize: '13px', fontWeight: 'bold' }}>
         {slot(children, "footer", <span>Default Footer</span>)}
       </div>
     </div>
@@ -29,7 +27,7 @@ function AsyncContent() {
   return (
     <div>
       <h3 style={{ marginTop: 0 }}>Loaded Data</h3>
-      <pre style={{ background: '#f5f5f5', padding: '10px', borderRadius: '4px' }}>
+      <pre style={{ border: '2px solid black', padding: '10px' }}>
         {JSON.stringify(data, null, 2)}
       </pre>
     </div>

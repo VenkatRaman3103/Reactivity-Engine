@@ -1,8 +1,8 @@
 import type { Plugin } from "vite";
 import { transformState } from "./transform-state";
-import { transformJSX, setStateMappings } from "./transform-jsx";
+import { transformJSX } from "./transform-jsx";
 import { transformStateFile } from "./transform-state-file";
-import { resolve } from "path";
+import { resolve, isAbsolute } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -69,9 +69,31 @@ export function engine(): Plugin {
           if (!relPath) return next();
 
           try {
-            const { readdirSync, statSync } = await import("fs");
-            const fullPath = resolve(process.cwd(), relPath);
-            const parent = resolve(fullPath, "..");
+            const { readdirSync, statSync, existsSync } = await import("fs");
+            let fullPath = relPath;
+            
+            // Handle /@fs/ paths from Vite
+            if (fullPath.startsWith('/@fs/')) {
+              fullPath = fullPath.substring(4);
+            } else if (fullPath.startsWith('@fs/')) {
+              fullPath = fullPath.substring(3);
+            }
+
+            if (!isAbsolute(fullPath)) {
+              fullPath = resolve(process.cwd(), fullPath);
+              // If it doesn't exist at root, try in example/ directory (Vite root)
+              if (!existsSync(fullPath)) {
+                fullPath = resolve(process.cwd(), 'example', relPath);
+              }
+            }
+
+            if (!existsSync(fullPath)) {
+              res.statusCode = 404;
+              res.end(JSON.stringify({ error: "Not found" }));
+              return;
+            }
+
+            const parent = statSync(fullPath).isDirectory() ? fullPath : resolve(fullPath, "..");
             const files = readdirSync(parent).map(f => {
               const s = statSync(resolve(parent, f));
               return { name: f, isDir: s.isDirectory() };
@@ -110,12 +132,11 @@ export function engine(): Plugin {
         if (step1Code !== transformedCode) {
           transformedCode = step1Code;
           anyChanges = true;
-          setStateMappings(mappings);
         }
 
         // step 2 — transform JSX (and rename variables)
         if (isTSX || (isTS && anyChanges)) {
-          transformedCode = transformJSX(transformedCode, cleanId);
+          transformedCode = transformJSX(transformedCode, cleanId, mappings);
           anyChanges = true;
         }
 

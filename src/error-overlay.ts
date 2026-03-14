@@ -495,13 +495,12 @@ export function parseStack(stack: string): {
       }
       
       // Remove Vite /@fs/ prefix which breaks physical file locating
+      // BUT keep it if it's part of an absolute path we want to fetch safely
       if (file.startsWith('@fs/')) {
-        file = file.substring(3);
-      } else if (file.startsWith('/@fs/')) {
-        file = file.substring(4);
+        file = '/' + file;
       }
 
-      file = file.replace(/^\//, "");
+      file = file.replace(/^\/\//, "/");
 
       return {
         file: file || null,
@@ -535,7 +534,10 @@ async function fetchSiblings(file: string): Promise<{ name: string; isDir: boole
 
 async function fetchSource(file: string): Promise<string | null> {
   try {
-    const res = await fetch(`/${file}`)
+    // If it's already an absolute path or has /@fs/, use it as is
+    // Otherwise, ensure it starts with a /
+    const url = file.startsWith('/') ? file : `/${file}`
+    const res = await fetch(url)
     if (!res.ok) return null
     return res.text()
   } catch {
@@ -627,9 +629,9 @@ async function renderOverlay(err: OverlayError) {
     treeItemsHtml += `<div class="engine-tree-item">${indent}${part}/</div>`;
   });
 
-  // Show siblings for the file level with further indentation
+  // fetch siblings for the file level with further indentation
   const levelIndent = "&nbsp;".repeat((dirParts.length + 1) * 2);
-  const siblings = file ? await fetchSiblings(file) : [];
+  const siblings = (file && file !== 'unknown') ? await fetchSiblings(file) : [];
   
   if (siblings.length > 0) {
     const targetIdx = siblings.findIndex(s => s.name === fileName);

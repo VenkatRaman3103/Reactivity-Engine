@@ -2,36 +2,50 @@ import { pushObserver, popObserver, Observer } from "./reactive";
 import {
   registerCleanup,
   registerErrorHandler,
+  isComponentMounted,
+  markComponentMounted,
+  instances,
 } from "./component";
 import { engineWarn } from "./errors";
 
 interface Owner {
   id?: string; // for components
   children?: Set<Effect>;
+  cleanups?: Set<() => void>;
+  mountedHooks?: Set<any>;
   parent?: Owner | null;
+  depth?: number;
 }
 
 let currentOwner: Owner | null = null;
-const ownerStack: Owner[] = [];
+const ownerStack: (Owner | null)[] = [];
 
 export function pushOwner(owner: Owner | null) {
-  if (currentOwner) ownerStack.push(currentOwner);
+  ownerStack.push(currentOwner);
   currentOwner = owner;
 }
 
 export function popOwner() {
-  currentOwner = ownerStack.pop() || null;
+  currentOwner = ownerStack.pop() ?? null;
 }
 
 export class Effect implements Observer {
   dependencies = new Set<Set<Observer>>();
   children = new Set<Effect>();
+  cleanups = new Set<() => void>();
+  mountedHooks = new Set<any>();
   private cleanupFn?: () => void;
+  public disposed = false;
+  public depth: number;
 
-  constructor(private fn: () => void | (() => void)) {}
+  constructor(private fn: () => void | (() => void)) {
+    this.depth = currentOwner ? ((currentOwner as any).depth || 0) + 1 : 0;
+  }
 
   execute() {
-    this.cleanup();
+    if (this.disposed) return;
+    this.unsubscribe();
+    this.mountedHooks.clear();
 
     pushObserver(this);
     pushOwner(this);
@@ -59,20 +73,34 @@ export class Effect implements Observer {
     }
   }
 
-  cleanup() {
-    // 1. Recursive cleanup children
-    this.children.forEach((child) => child.cleanup());
+  unsubscribe() {
+    // 1. Recursive dispose children
+    this.children.forEach((child) => child.dispose());
     this.children.clear();
 
-    // 2. Run user-provided cleanup
+    // 2. Run cleanups registered via onUnmount or sub-components
+    this.cleanups.forEach((fn) => fn());
+    this.cleanups.clear();
+
+    // 3. Run user-provided cleanup from the effect itself
     if (this.cleanupFn) {
       this.cleanupFn();
       this.cleanupFn = undefined;
     }
 
-    // 3. Unsubscribe from all signals
+    // 4. Unsubscribe from all signals
     this.dependencies.forEach((subs) => subs.delete(this));
     this.dependencies.clear();
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.unsubscribe();
+  }
+
+  // Alias for backward compatibility if needed, though internal usage should move to dispose()
+  cleanup() {
+    this.dispose();
   }
 }
 
@@ -95,7 +123,7 @@ export function createEffect(fn: () => void | (() => void)) {
   if (currentOwner) {
     if (currentOwner.id) {
       // Component owner
-      registerCleanup(currentOwner.id, () => e.cleanup());
+      registerCleanup(currentOwner.id, () => e.dispose());
     } else {
       // Effect owner
       (currentOwner as Effect).children.add(e);
@@ -103,7 +131,7 @@ export function createEffect(fn: () => void | (() => void)) {
   }
 
   e.execute();
-  return () => e.cleanup();
+  return () => e.dispose();
 }
 
 export const effect = createEffect;
@@ -122,8 +150,8 @@ export function onMount(fn: () => void | (() => void)) {
   if (!currentOwner) {
     engineWarn({
       category: "Effect",
-      what: "onMount() was called outside of a component.",
-      why: "onMount() must be called inside a component function body.",
+      what: "onMount() was called outside of a component or reactive effect.",
+      why: "onMount() must be called inside a component function body or an effect.",
       fix:
         "Move onMount() inside your component function.\n" +
         "  export default function MyComponent() {\n" +
@@ -133,14 +161,27 @@ export function onMount(fn: () => void | (() => void)) {
     return;
   }
 
-  const owner = currentOwner;
+  // Use the owner's mountedHooks to ensure idempotency within this specific execution cycle
+  // (e.g. if the component function is re-called by a re-render)
+  const owner = currentOwner as any;
+  if (owner.mountedHooks && owner.mountedHooks.has(fn)) return;
+  if (owner.mountedHooks) owner.mountedHooks.add(fn);
+
   Promise.resolve().then(() => {
+    // Ghost mount check: if the owner was disposed/unmounted before the promise ran
+    if (owner.disposed === true) return;
+    if (owner.id && !instances.has(owner.id)) return;
+
     pushOwner(owner);
-    const stop = fn();
-    if (owner && owner.id && typeof stop === "function") {
-      registerCleanup(owner.id, stop);
+    try {
+      const stop = fn();
+      if (stop && typeof stop === "function") {
+        if (owner.cleanups) owner.cleanups.add(stop);
+        else if (owner.id) registerCleanup(owner.id, stop);
+      }
+    } finally {
+      popOwner();
     }
-    popOwner();
   });
 }
 
@@ -158,20 +199,31 @@ export function onUnmount(fn: () => void) {
   if (!currentOwner) {
     engineWarn({
       category: "Effect",
-      what: "onUnmount() was called outside of a component.",
+      what: "onUnmount() was called outside of a component or effect.",
       fix: "Move onUnmount() inside your component function body.",
     });
     return;
   }
 
-  if (currentOwner?.id) {
-    registerCleanup(currentOwner.id, fn);
+  const owner = currentOwner as any;
+  if (owner.cleanups) {
+    owner.cleanups.add(fn);
+  } else if (owner.id) {
+    registerCleanup(owner.id, fn);
   }
 }
 
 export function onError(fn: (e: Error) => Node) {
-  if (currentOwner?.id) {
-    registerErrorHandler(currentOwner.id, fn);
+  if (!currentOwner) return;
+
+  // Walk up the owner tree to find a component that can handle the error
+  let owner: any = currentOwner;
+  while (owner) {
+    if (owner.id) {
+      registerErrorHandler(owner.id, fn);
+      return;
+    }
+    owner = owner.parent;
   }
 }
 

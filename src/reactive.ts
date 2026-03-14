@@ -1,23 +1,25 @@
 import { engineWarn } from "./errors";
+import { scheduleEffect, isFlushing } from "./scheduler";
 
 export interface Observer {
   dependencies: Set<Set<Observer>>;
+  depth: number;
   execute: () => void;
 }
 
 let activeObserver: Observer | null = null;
-const observerStack: Observer[] = [];
+const observerStack: (Observer | null)[] = [];
 
 let pendingNotifications = new Set<Signal<any>>();
 let batchCount = 0;
 
 export function pushObserver(observer: Observer | null) {
-  if (activeObserver) observerStack.push(activeObserver);
+  observerStack.push(activeObserver!);
   activeObserver = observer;
 }
 
 export function popObserver() {
-  activeObserver = observerStack.pop() || null;
+  activeObserver = observerStack.pop() ?? null;
 }
 
 export function getActiveObserver() {
@@ -27,6 +29,7 @@ export function getActiveObserver() {
 export class Signal<T> {
   private subscribers = new Set<Observer>();
   public label?: string;
+  private _notifying = false;
 
   constructor(private _value: T) {}
 
@@ -49,22 +52,40 @@ export class Signal<T> {
     }
   }
 
+  private _warned = false;
+  
   notify() {
-    if (this.subscribers.size === 0 && this.label) {
-      engineWarn({
-        category: "Reactivity",
-        what: `State file '${this.label}' was updated but has no subscribers.`,
-        why: "No component or effect has read from this state file yet.",
-        fix:
-          "This may be expected on first load. If state updates are\n" +
-          "not reflecting in the UI, make sure the component that\n" +
-          `imports from '${this.label}' has rendered at least once.`,
-      });
+    if (this.subscribers.size === 0 && !isFlushing && !this._warned) {
+      const isInternal = this.label?.startsWith('engine:') || this.label?.startsWith('internal:');
+      const isState = this.label?.includes('.state.');
+      
+      if (!isInternal && !isState) {
+        this._warned = true; // only warn once per signal
+        engineWarn({
+          category: "Reactivity",
+          file: this.label,
+          what: `Signal '${this.label || "anonymous"}' was updated but has no subscribers.`,
+          why: "No component or effect has read from this signal yet.",
+          fix: "If this signal is meant to be reactive, make sure something is reading its .value.",
+        });
+      }
     }
 
-    // Clone to avoid concurrent modification issues during execution
-    const subs = Array.from(this.subscribers);
-    subs.forEach((sub) => sub.execute());
+    // Loop protection - check for excessive re-scheduling
+    if (this._notifying) {
+       console.warn(`[Engine] Circular update detected for signal: ${this.label || 'unknown'}`);
+       return;
+    }
+
+    this._notifying = true;
+    try {
+      // Batch all subscriber executions via the scheduler
+      this.subscribers.forEach((sub) => {
+        scheduleEffect(sub);
+      });
+    } finally {
+      this._notifying = false;
+    }
   }
 
   unsubscribe(observer: Observer) {

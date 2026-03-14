@@ -163,8 +163,17 @@ export function wrapState<T extends Record<string, any>>(
 }
 
 function wrapObject(file: string, path: string, obj: any): any {
+  // Don't wrap if not an object or if already a proxy
+  if (!obj || typeof obj !== 'object' || obj.__isProxy) return obj;
+
+  // Only wrap plain objects and arrays
+  const proto = Object.getPrototypeOf(obj);
+  const isPlain = proto === Object.prototype || proto === Array.prototype;
+  if (!isPlain) return obj;
+
   return new Proxy(obj, {
     get(target, prop, receiver) {
+      if (prop === '__isProxy') return true;
       const val = Reflect.get(target, prop, receiver);
       
       if (Array.isArray(target) && typeof val === "function") {
@@ -173,7 +182,6 @@ function wrapObject(file: string, path: string, obj: any): any {
           return (...args: any[]) => {
             const result = val.apply(target, args);
             // Array mutation: trigger notify on parent signal to update mappings
-            // Note: we do not trigger a full component rerender, just the granular binding
             const fileSignals = signalCache.get(file);
             const parentKey = path.split('.')[0];
             const signal = fileSignals?.get(parentKey);
@@ -185,12 +193,13 @@ function wrapObject(file: string, path: string, obj: any): any {
         }
       }
 
-      if (val && typeof val === "object") {
+      if (val && typeof val === "object" && !val.__isProxy) {
         return wrapObject(file, `${path}.${String(prop)}`, val);
       }
       return val;
     },
     set(target, prop, value, receiver) {
+      if (Reflect.get(target, prop, receiver) === value) return true;
       const result = Reflect.set(target, prop, value, receiver);
       const fileSignals = signalCache.get(file);
       const parentKey = path.split('.')[0];
@@ -205,9 +214,10 @@ export function notifySignal(file: string, key: string, newValue?: any) {
   const signal = fileSignals?.get(key);
   if (signal) {
     if (arguments.length > 2) {
-      (signal as any)._value = newValue;
+      signal.value = newValue;
+    } else {
+      signal.notify();
     }
-    signal.notify();
   }
 }
 

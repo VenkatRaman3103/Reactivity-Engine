@@ -7,8 +7,11 @@ export interface Instance {
   fn: () => Node;
   container: Element;
   el: Node | null;
-  cleanups: (() => void)[];
+  cleanups: Set<() => void>;
+  mountedHooks: Set<any>;
   onError: ((e: Error) => Node) | null;
+  mounted: boolean;
+  depth: number;
 }
 
 export const instances = new Map<string, Instance>();
@@ -74,8 +77,11 @@ export function mountComponent(
     fn,
     container,
     el: null,
-    cleanups: [],
+    cleanups: new Set(),
+    mountedHooks: new Set(),
     onError: null,
+    mounted: false,
+    depth: 0,
   };
   instances.set(cid, inst);
 
@@ -86,7 +92,7 @@ export function mountComponent(
 function render(inst: Instance) {
   try {
     rendering = inst.id;
-    pushOwner({ id: inst.id });
+    pushOwner(inst as any);
 
     const el = inst.fn();
 
@@ -178,6 +184,7 @@ export function unmountComponent(id: string) {
   const inst = instances.get(id);
   if (!inst) return;
   inst.cleanups.forEach((fn) => fn());
+  inst.cleanups.clear();
   cleanupPortals(id);
   if (inst.el && inst.container.contains(inst.el)) {
     inst.container.removeChild(inst.el);
@@ -187,10 +194,19 @@ export function unmountComponent(id: string) {
 
 export function registerCleanup(id: string, fn: () => void) {
   const inst = instances.get(id);
-  if (inst) inst.cleanups.push(fn);
+  if (inst) inst.cleanups.add(fn);
 }
 
 export function registerErrorHandler(id: string, fn: (e: Error) => Node) {
   const inst = instances.get(id);
   if (inst) inst.onError = fn;
+}
+
+export function isComponentMounted(id: string): boolean {
+  return instances.get(id)?.mounted ?? false;
+}
+
+export function markComponentMounted(id: string) {
+  const inst = instances.get(id);
+  if (inst) inst.mounted = true;
 }

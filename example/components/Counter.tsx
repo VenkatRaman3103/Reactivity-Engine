@@ -76,15 +76,19 @@ export default function Counter() {
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(0,0,0,0.8)",
-              color: "white",
+              background: "white",
+              color: "black",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               zIndex: 9999,
+              border: "4px solid black",
             }}
           >
-            <h2>I am a Modal Portal! (Count is {count})</h2>
+            <div style={{ border: '2px solid black', padding: '40px', background: '#fff' }}>
+              <h2 style={{ margin: 0, textTransform: 'uppercase' }}>MODAL PORTAL</h2>
+              <p style={{ fontSize: '24px', fontWeight: 'bold' }}>Count: {count}</p>
+            </div>
           </div>,
           document.body, // This is the default target, but we're being explicit
         )}
