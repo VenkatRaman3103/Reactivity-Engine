@@ -7,12 +7,12 @@ export * from "./reactive";
 export * from "./ref";
 export * from "./scheduler";
 export * from "./state";
-export * from "./errors";
 export {
   showOverlay,
   dismissOverlay,
   type OverlayError,
 } from "./error-overlay";
+export { derive } from "./derived";
 
 export { h as __h } from "./dom";
 
@@ -24,3 +24,19 @@ declare global {
     interface Element extends Node {}
   }
 }
+
+export { toggleDevPanel } from "./devtools";
+export { Suspense, trackAsync, isPending } from "./suspense";
+export { slot } from "./slot";
+export { portal, closePortal } from "./portal";
+
+if (import.meta.env.DEV) {
+  Promise.all([
+    import('./hmr').then(m      => m.initHMR()),
+    import('./devtools').then(m => m.initDevTools())
+  ])
+}
+
+
+// trigger vite reload
+// trigger 2

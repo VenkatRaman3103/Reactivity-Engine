@@ -82,6 +82,9 @@ export function derive<T>(fn: () => T): { readonly value: T } {
   const d = new Derived(fn);
 
   // Initial computation to set up dependencies
+  // Push null to prevent the outer effect (like a component render)
+  // from subscribing to this derived signal during its initialization.
+  pushObserver(null);
   try {
     d.value;
   } catch (e: any) {
@@ -92,6 +95,8 @@ export function derive<T>(fn: () => T): { readonly value: T } {
       fix: "Check that all state variables used in derive() " +
         "have initial values in their state file.",
     });
+  } finally {
+    popObserver();
   }
 
   return {

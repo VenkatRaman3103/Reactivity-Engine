@@ -17,6 +17,7 @@ export function transformJSX(code: string, filename: string): string {
     plugins: [
       renameStateVarsPlugin,
       reactiveExpressionsPlugin,
+      transformKeyedJSXPlugin,
       [
         "@babel/plugin-transform-react-jsx",
         {
@@ -76,8 +77,15 @@ function reactiveExpressionsPlugin({ types: t }: any) {
           }
         }
 
-        // check if expression references any state variables (now as MemberExpressions)
+        // check if expressionreferences any state variables (now as MemberExpressions)
         if (referencesStateNamespace(expr)) {
+          // Do not wrap Array.prototype methods like .map if they're root level in JSX
+          // because it creates a coarse-grained thunk `() => array.map(...)` which 
+          // reconstructs the array elements every time ANY referenced state changes.
+          // BUT wait, if we don't wrap it, it won't be reactive at all if the array changes.
+          // The issue is `items` is NOT state in the user's snippet.
+          // "items" is a local variable: `const items = [...]`
+          // So referencesStateNamespace(expr) should return FALSE.
           path.node.expression = t.arrowFunctionExpression([], expr);
         }
       },
@@ -122,3 +130,49 @@ function referencesStateNamespace(node: any): boolean {
     return false;
   });
 }
+
+// babel plugin that handles extracting the key prop from JSX elements
+function transformKeyedJSXPlugin({ types: t }: any) {
+  return {
+    visitor: {
+      JSXElement(path: any) {
+        const openingEl  = path.node.openingElement
+        const attributes = openingEl.attributes
+
+        // find key prop
+        const keyAttr = attributes.find(
+          (a: any) => a.type === 'JSXAttribute' && a.name.name === 'key'
+        )
+
+        if (!keyAttr) return
+
+        // remove key from props — never render to DOM
+        openingEl.attributes = attributes.filter(
+          (a: any) => !(a.type === 'JSXAttribute' && a.name.name === 'key')
+        )
+
+        // wrap element in { __key, __node } object
+        // so reconcile can extract the key
+        const keyValue = keyAttr.value
+        path.replaceWith({
+          type: 'ObjectExpression',
+          properties: [
+            {
+              type:  'ObjectProperty',
+              key:   { type: 'Identifier', name: '__key' },
+              value: keyValue.type === 'JSXExpressionContainer'
+                ? keyValue.expression
+                : keyValue
+            },
+            {
+              type:  'ObjectProperty',
+              key:   { type: 'Identifier', name: '__node' },
+              value: path.node
+            }
+          ]
+        })
+      }
+    }
+  }
+}
+

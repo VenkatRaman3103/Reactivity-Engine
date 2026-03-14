@@ -1,5 +1,6 @@
 import { pushOwner, popOwner } from "./effect";
 import { engineError, engineWarn, engineInfo } from "./errors";
+import { cleanupPortals } from "./portal";
 
 export interface Instance {
   id: string;
@@ -177,6 +178,7 @@ export function unmountComponent(id: string) {
   const inst = instances.get(id);
   if (!inst) return;
   inst.cleanups.forEach((fn) => fn());
+  cleanupPortals(id);
   if (inst.el && inst.container.contains(inst.el)) {
     inst.container.removeChild(inst.el);
   }

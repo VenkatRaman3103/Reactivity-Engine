@@ -1,5 +1,6 @@
 import { createEffect } from "./effect";
 import { engineError, engineWarn } from "./errors";
+import { reconcile, getKey, KeyedNode } from "./keyed";
 
 export type Child =
   | string
@@ -18,7 +19,13 @@ export function h(
   ...children: Child[]
 ): Node {
   if (typeof tag === "function") {
-    const props_ = props ?? {};
+    const props_ = props ? { ...props } : {};
+    
+    // Mount varargs into props so functional components can access their inner JSX
+    if (children.length > 0) {
+      props_.children = children.length === 1 ? children[0] : children;
+    }
+
     const result = tag(props_);
 
     // error — component returned nothing
@@ -77,6 +84,8 @@ export const Fragment = "__fragment";
 function applyProps(el: HTMLElement, props: Record<string, any>) {
   Object.entries(props).forEach(([key, val]) => {
     if (key === "children") return;
+    if (key === "key") return;
+    if (key === "__key") return;
 
     if (key.startsWith("on") && typeof val === "function") {
       el.addEventListener(key.slice(2).toLowerCase(), val);
@@ -128,6 +137,11 @@ function applyChild(parent: Node, child: Child) {
     return;
   }
 
+  if (child && typeof child === "object" && "__node" in child) {
+    applyChild(parent, (child as Record<string, any>).__node);
+    return;
+  }
+
   parent.appendChild(document.createTextNode(String(child)));
 }
 
@@ -136,26 +150,49 @@ function applyReactive(parent: Node, fn: () => Child) {
   parent.appendChild(marker);
 
   let currentNodes: Node[] = [];
+  let keyedNodes: KeyedNode[] = [];
+  let isKeyed = false;
+  let firstRun = true;
 
   createEffect(() => {
-    // Cleanup previous nodes
-    currentNodes.forEach(n => {
-      n.parentNode?.removeChild(n);
-    });
-    currentNodes = [];
-
     const raw = fn();
     const children = Array.isArray(raw) ? raw : [raw];
-    
-    const fragment = document.createDocumentFragment();
-    children.forEach(c => {
-      if (c === null || c === undefined || c === false) return;
-      const n = toNode(c);
-      fragment.appendChild(n);
-      currentNodes.push(n);
-    });
 
-    marker.parentNode?.insertBefore(fragment, marker);
+    if (firstRun) {
+      firstRun = false;
+      isKeyed = children.length > 0 && getKey(children[0]) !== null;
+    }
+
+    if (isKeyed) {
+      keyedNodes = reconcile(
+        parent,
+        marker,
+        keyedNodes,
+        children,
+        (item) => {
+          return item.__node instanceof Node
+            ? item.__node
+            : toNode(item.__node);
+        },
+        (item) => item.__key
+      );
+    } else {
+      // Cleanup previous nodes
+      currentNodes.forEach(n => {
+        n.parentNode?.removeChild(n);
+      });
+      currentNodes = [];
+
+      const fragment = document.createDocumentFragment();
+      children.forEach(c => {
+        if (c === null || c === undefined || c === false) return;
+        const n = toNode(c);
+        fragment.appendChild(n);
+        currentNodes.push(n);
+      });
+
+      marker.parentNode?.insertBefore(fragment, marker);
+    }
   });
 }
 
@@ -175,6 +212,9 @@ function toNode(child: Child): Node {
        n.textContent = String(child());
     });
     return n;
+  }
+  if (child && typeof child === "object" && "__node" in child) {
+    return toNode((child as Record<string, any>).__node);
   }
   return document.createTextNode(String(child));
 }

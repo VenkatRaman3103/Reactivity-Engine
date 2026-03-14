@@ -2,7 +2,7 @@ import { page, goTo } from "./state/app.state";
 import Counter from "./components/Counter";
 import ProductList from "./components/ProductList";
 import Cart from "./components/Cart";
-import ErrorDemo from "./components/ErrorDemo";
+import SuspenseDemo from "./components/SuspenseDemo";
 
 export default function App() {
   return (
@@ -13,15 +13,15 @@ export default function App() {
         <button onClick={() => goTo("counter")}>Counter</button>
         <button onClick={() => goTo("products")}>Products</button>
         <button onClick={() => goTo("cart")}>Cart</button>
+        <button onClick={() => goTo("suspense")}>Suspense & Slots</button>
       </nav>
 
       <div style={{ padding: '20px', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
         {page === "counter" && <Counter />}
         {page === "products" && <ProductList />}
         {page === "cart" && <Cart />}
+        {page === "suspense" && <SuspenseDemo />}
       </div>
-
-      <ErrorDemo />
     </div>
   );
 }

@@ -12,13 +12,17 @@ export type ErrorCategory =
   | "Derived"
   | "Effect"
   | "DOM"
-  | "Mount";
+  | "Mount"
+  | "HMR"
+  | "DevTools"
+  | "Portal";
 
 export interface EngineError {
   category: ErrorCategory;
   what: string;
   why?: string;
   fix?: string;
+  example?: string;
   file?: string;
   line?: number;
 }

@@ -1,7 +1,14 @@
 import { Signal, batch } from "./reactive";
 import { engineError, engineWarn } from "./errors";
+import { stateModules, snapshotRegistry } from "./memo";
+import { registerStateFile, recordStateChange } from "./devtools";
+import { trackAsync } from "./suspense";
 
 const signalCache = new Map<string, Map<string, Signal<any>>>();
+
+export function getSignalCache() {
+  return signalCache;
+}
 
 export function wrapState<T extends Record<string, any>>(
   file: string,
@@ -21,6 +28,10 @@ export function wrapState<T extends Record<string, any>>(
     });
   }
 
+  stateModules.set(file, mod);
+  snapshotRegistry.set(file, mod);
+  registerStateFile(file, mod);
+
   if (!signalCache.has(file)) {
     signalCache.set(file, new Map());
   }
@@ -37,30 +48,51 @@ export function wrapState<T extends Record<string, any>>(
     if (typeof initialVal === "function") {
       // Wrap functions in a batch to group state changes
       wrapped[key] = (...args: any[]) => {
+        const before: Record<string, any> = {};
+        Object.keys(mod).forEach(k => {
+          if (typeof mod[k] !== 'function') before[k] = mod[k];
+        });
+
         try {
           let result: any;
           batch(() => {
-            result = initialVal(...args);
+            result = mod[key](...args); // use original array or object func, wait, initialVal
           });
 
-          if (result instanceof Promise) {
-            return result
-              .catch((err) => {
-                engineWarn({
-                  category: "State",
-                  file,
-                  what: `Async function '${key}' in '${file}' threw an error.`,
-                  why: err.message,
-                  fix:
-                    `Handle the error inside '${key}' with try/catch.\n` +
-                    `  export async function ${key}() {\n` +
-                    `    try { ... }\n` +
-                    `    catch(e) { error = e.message }\n` +
-                    `  }`,
-                });
-                throw err;
-              });
+          const finish = () => {
+             Object.keys(mod).forEach(k => {
+               if (typeof mod[k] !== 'function' && mod[k] !== before[k]) {
+                 recordStateChange(file, k, before[k], mod[k]);
+               }
+             });
+             // in signals we do not do file level notify, the signals already notified 
+             // but if we need a bulk notify:
+             // notifyAllInFile(file)
           }
+
+          if (result instanceof Promise) {
+            return trackAsync(
+              result
+                .finally(finish)
+                .catch((err) => {
+                  engineWarn({
+                    category: "State",
+                    file,
+                    what: `Async function '${key}' in '${file}' threw an error.`,
+                    why: err.message,
+                    fix:
+                      `Handle the error inside '${key}' with try/catch.\n` +
+                      `  export async function ${key}() {\n` +
+                      `    try { ... }\n` +
+                      `    catch(e) { error = e.message }\n` +
+                      `  }`,
+                  });
+                  throw err;
+                })
+            );
+          }
+          
+          finish();
           return result;
         } catch (e: any) {
           engineError({
@@ -140,6 +172,8 @@ function wrapObject(file: string, path: string, obj: any): any {
         if (mutating.includes(prop as string)) {
           return (...args: any[]) => {
             const result = val.apply(target, args);
+            // Array mutation: trigger notify on parent signal to update mappings
+            // Note: we do not trigger a full component rerender, just the granular binding
             const fileSignals = signalCache.get(file);
             const parentKey = path.split('.')[0];
             const signal = fileSignals?.get(parentKey);
@@ -176,3 +210,11 @@ export function notifySignal(file: string, key: string, newValue?: any) {
     signal.notify();
   }
 }
+
+export function notifyAllInFile(file: string) {
+  const fileSignals = signalCache.get(file);
+  if (fileSignals) {
+    fileSignals.forEach(signal => signal.notify());
+  }
+}
+

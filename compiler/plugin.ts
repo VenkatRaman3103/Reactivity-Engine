@@ -12,6 +12,37 @@ export function engine(): Plugin {
     name: "engine",
     enforce: "pre",
 
+    handleHotUpdate({ file, server }: any) {
+      if (file.endsWith('.state.ts')) {
+        let relative = file.replace(process.cwd(), '').replace(/\\/g, '/')
+        // if the file is inside the vite root (example directory), we need to strip it
+        if (relative.startsWith('/example/')) relative = relative.replace('/example/', '/')
+
+        server.ws.send({
+          type:  'custom',
+          event: 'engine:state-update',
+          data:  {
+            file: relative
+          }
+        })
+        return []
+      }
+
+      if (file.endsWith('.tsx')) {
+        let relative = file.replace(process.cwd(), '').replace(/\\/g, '/')
+        if (relative.startsWith('/example/')) relative = relative.replace('/example/', '/')
+
+        server.ws.send({
+          type:  'custom',
+          event: 'engine:component-update',
+          data:  {
+            file: relative
+          }
+        })
+        return
+      }
+    },
+
     resolveId(source: string) {
       if (source === "@engine/index" || source === "@engine") {
         return resolve(__dirname, "../src/index.ts");
