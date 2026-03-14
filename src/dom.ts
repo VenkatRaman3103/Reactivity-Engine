@@ -82,15 +82,24 @@ export function h(
     });
   }
 
-  const el = document.createElement(tag);
-  if (props) applyProps(el, props);
+  const svgTags = new Set([
+    "svg", "path", "line", "circle", "rect", "ellipse", "polyline", "polygon", 
+    "text", "tspan", "defs", "g", "symbol", "use", "image", "clippath", "mask", "pattern"
+  ]);
+
+  const isSVG = svgTags.has(tag) || (parent instanceof Element && parent.namespaceURI === "http://www.w3.org/2000/svg");
+  const el = isSVG 
+    ? (document.createElementNS("http://www.w3.org/2000/svg", tag) as any) as HTMLElement
+    : document.createElement(tag);
+
+  if (props) applyProps(el, props, isSVG);
   children.flat(Infinity).forEach((c) => applyChild(el, c));
   return el;
 }
 
 export const Fragment = "__fragment";
 
-function applyProps(el: HTMLElement, props: Record<string, any>) {
+function applyProps(el: HTMLElement, props: Record<string, any>, isSVG = false) {
   Object.entries(props).forEach(([key, val]) => {
     if (key === "children") return;
     if (key === "key") return;
@@ -104,7 +113,10 @@ function applyProps(el: HTMLElement, props: Record<string, any>) {
     if (typeof val === "function") {
       createEffect(() => {
         const v = val();
-        if (key === "class") el.className = String(v);
+        if (key === "class") {
+          if (isSVG) el.setAttribute("class", String(v));
+          else el.className = String(v);
+        }
         else if (key === "style" && typeof v === "object") Object.assign(el.style, v);
         else if (typeof v === "boolean") {
           if (v) el.setAttribute(key, "");
@@ -119,7 +131,10 @@ function applyProps(el: HTMLElement, props: Record<string, any>) {
       return;
     }
 
-    if (key === "class") el.className = String(val);
+    if (key === "class") {
+      if (isSVG) el.setAttribute("class", String(val));
+      else el.className = String(val);
+    }
     else if (key === "style" && typeof val === "object") Object.assign(el.style, val);
     else if (typeof val === "boolean") {
       if (val) el.setAttribute(key, "");
