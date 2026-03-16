@@ -2,7 +2,7 @@ export let count = 0;
 export let step = 1;
 
 export function increment() {
-  count += step;
+  count += 1;
 }
 
 export function decrement() {

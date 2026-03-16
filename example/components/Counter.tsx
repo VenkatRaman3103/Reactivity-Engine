@@ -26,7 +26,7 @@ export default function Counter() {
   const doubled = derive(() => count * 2);
   const isZero = derive(() => count === 0);
 
-  const showModal = derive(() => count % 3 === 0 && count !== 0);
+  const showModal = derive(() => count % 10 === 0 && count !== 0);
 
   effect(() => {
     document.title = `Count: ${count}`;
