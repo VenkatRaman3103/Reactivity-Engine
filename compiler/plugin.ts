@@ -122,29 +122,29 @@ export function engine(): Plugin {
         let transformedCode = code;
         let anyChanges = false;
 
-        // step 0 — for .state.ts files, inject auto-notifications
+        // step 0 — transform whenever/when conditions (DO THIS FIRST)
+        if (!cleanId.includes('src/when.ts')) {
+          const step0Code = transformWhenConditions(transformedCode);
+          if (step0Code !== transformedCode) {
+            transformedCode = step0Code;
+            anyChanges = true;
+          }
+        }
+
+        // step 1 — for .state.ts files, inject auto-notifications
         if (isState) {
           transformedCode = transformStateFile(transformedCode, cleanId);
           anyChanges = true;
         }
 
-        // step 1 — transform state imports and get mappings
-        const { code: step1Code, mappings } = await transformState(transformedCode, cleanId);
-        if (step1Code !== transformedCode) {
-          transformedCode = step1Code;
+        // step 2 — transform state imports and get mappings
+        const { code: step2Code, mappings } = await transformState(transformedCode, cleanId);
+        if (step2Code !== transformedCode) {
+          transformedCode = step2Code;
           anyChanges = true;
         }
 
-        // step 1.5 — transform whenever/when conditions
-        if (!cleanId.includes('src/when.ts')) {
-          const step15Code = transformWhenConditions(transformedCode);
-          if (step15Code !== transformedCode) {
-            transformedCode = step15Code;
-            anyChanges = true;
-          }
-        }
-
-        // step 2 — transform JSX (and rename variables)
+        // step 3 — transform JSX (and rename variables)
         if (isTSX || (isTS && anyChanges)) {
           transformedCode = transformJSX(transformedCode, cleanId, mappings);
           anyChanges = true;

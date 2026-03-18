@@ -1,69 +1,67 @@
-// example/demo/WhenDemo.state.tsx
+// example/demo/WhenDemo.state.tsx (force fresh compile v4)
 import { whenever, when } from "@engine/index";
 
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-}
+// --- Part 1: whenever (Counter) ---
+export let count = 0;
+export let total = 0;
 
-interface User {
-  name: string;
-  isLoggedIn: boolean;
-}
+whenever(count, () => {
+  total = count * 2;
+});
 
-export let items: CartItem[] = []
-export let total       = 0
-export let isEmpty     = true
-export let count       = 0
-export let discount    = false
-export let user: User | null = null
-export let canCheckout = false
+export function increment() { count++; }
+export function decrement() { count--; }
+export function resetCount() { count = 0; }
 
-// plain variable — compiler wraps to () => items
-whenever(items, () => {
-  total    = items.reduce((s, i) => s + (i.price || 0), 0)
-  isEmpty  = items.length === 0
-  count    = items.length
-})
+// --- Part 2: when (Login) ---
+export let user: { name: string } | null = null;
+export let welcomed = false;
 
-// expression — compiler wraps to () => items.length > 3
-whenever(items.length > 3, () => {
-  discount = true
-})
-
-whenever(!(items.length > 3), () => {
-  discount = false
-})
-
-// multiple conditions — compiler wraps to () => items && user
-whenever(items.length > 0 && user, () => {
-  canCheckout = !isEmpty && user.isLoggedIn
-})
-
-// runs once when user first set
 when(user, () => {
-  console.log('User detected for the first time:', user.name)
-})
+  welcomed = true;
+  // runs once — no matter how many times user changes
+});
 
-export function addItem() {
-  const id = Math.floor(Math.random() * 1000)
-  items = [...items, { id, name: `Item ${id}`, price: Math.floor(Math.random() * 50) + 10 }]
+export function login()  { user = { name: 'John' }; }
+export function logout() { user = null; }
+
+// --- Part 3: whenever with switch (Cart) ---
+export let items: any[] = [];
+export let discount = 0;
+export let message = 'Add items to get a discount';
+
+whenever(items, () => {
+  switch (true) {
+    case items.length >= 15:
+      discount = 30;
+      message = '30% bulk discount applied';
+      break;
+    case items.length >= 10:
+      discount = 20;
+      message = '20% discount applied';
+      break;
+    case items.length >= 5:
+      discount = 10;
+      message = '10% discount applied';
+      break;
+    default:
+      discount = 0;
+      message = 'Add items to get a discount';
+  }
+});
+
+export function addItem()    { items = [...items, {}]; }
+export function removeItem() { items = items.slice(0, -1); }
+export function clearCart()  { items = []; }
+
+// --- Part 4: Lifecycle Log ---
+export let lifecycleLogs: string[] = [];
+export let showLiveComponent = false;
+
+export function addLifecycleLog(msg: string) {
+  lifecycleLogs = [`● ${msg}`, ...lifecycleLogs].slice(0, 10);
 }
 
-export function removeItem(id: number) {
-  items = items.filter(i => i.id !== id)
-}
-
-export function clearCart() {
-  items = []
-}
-
-export function login() {
-  user = { name: 'Demo User', isLoggedIn: true }
-}
-
-export function logout() {
-  user = null
-  canCheckout = false
+export function toggleLiveComponent() {
+  showLiveComponent = !showLiveComponent;
 }

@@ -63,8 +63,8 @@ const modules = [
   },
   {
     id: "conditional",
-    title: "Conditional",
-    desc: "when() & whenever()",
+    title: "When / Whenever",
+    desc: "Lifecycle & Conditions",
     component: WhenDemo,
   },
 ];

@@ -31,10 +31,26 @@ export function whenever(
   }
 
   // condition is a raw value — wrap it
-  // this path is hit if compiler did not transform
-  // or developer passed a raw value directly
+  // this path is hit if developer passed a raw value directly
+  // or compiler skipped it. 
+  // We warn the dev so they know it won't be reactive if it happens to be a local var.
+  if (typeof condition !== 'symbol') {
+    engineWarn({
+      category: 'Reactivity',
+      what:     'whenever() condition is not a function.',
+      why:      'Direct values are not reactive unless they are Signals/Derives with a .value property.',
+      fix:      'Wrap your condition in an arrow function: whenever(() => count, ...)'
+    })
+  }
+
   return effect(() => {
-    if (condition) fn()
+    // If the user passed a signal directly, reading its .value inside the effect tracks it.
+    // If they passed a raw variable like 'count', it's NOT reactive because 'count' is just a primitive 0.
+    const val = (condition && typeof condition === 'object' && 'value' in condition) 
+      ? condition.value 
+      : condition;
+      
+    if (val) fn()
   })
 }
 
