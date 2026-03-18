@@ -7,6 +7,8 @@ export * from "./reactive";
 export * from "./ref";
 export * from "./scheduler";
 export * from "./state";
+export { whenever, when } from "./when";
+export { Mount, Unmount, Err, type ErrObject } from "./lifecycle";
 export {
   showOverlay,
   dismissOverlay,

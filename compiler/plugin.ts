@@ -2,6 +2,7 @@ import type { Plugin } from "vite";
 import { transformState } from "./transform-state";
 import { transformJSX } from "./transform-jsx";
 import { transformStateFile } from "./transform-state-file";
+import { transformWhenConditions } from "./transform-when";
 import { resolve, isAbsolute } from "path";
 import { fileURLToPath } from "url";
 
@@ -110,7 +111,7 @@ export function engine(): Plugin {
       });
     },
 
-    transform(code: string, id: string) {
+    async transform(code: string, id: string) {
       const cleanId = id.split("?")[0];
       const isTSX = cleanId.endsWith(".tsx");
       const isTS = cleanId.endsWith(".ts");
@@ -128,10 +129,19 @@ export function engine(): Plugin {
         }
 
         // step 1 — transform state imports and get mappings
-        const { code: step1Code, mappings } = transformState(transformedCode, cleanId);
+        const { code: step1Code, mappings } = await transformState(transformedCode, cleanId);
         if (step1Code !== transformedCode) {
           transformedCode = step1Code;
           anyChanges = true;
+        }
+
+        // step 1.5 — transform whenever/when conditions
+        if (!cleanId.includes('src/when.ts')) {
+          const step15Code = transformWhenConditions(transformedCode);
+          if (step15Code !== transformedCode) {
+            transformedCode = step15Code;
+            anyChanges = true;
+          }
         }
 
         // step 2 — transform JSX (and rename variables)

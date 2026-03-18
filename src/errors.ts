@@ -1,7 +1,7 @@
 import { showOverlay, parseStack } from "./error-overlay";
 
 // @ts-ignore
-const isDev = import.meta.env.DEV;
+const isDev = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.DEV : true;
 
 export type ErrorCategory =
   | "State"

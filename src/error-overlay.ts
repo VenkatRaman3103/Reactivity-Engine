@@ -1,7 +1,8 @@
 // src/error-overlay.ts
 
 // @ts-ignore - import.meta.env is provided by Vite
-const isDev = import.meta.env.DEV;
+// @ts-ignore
+const isDev = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.DEV : true;
 
 // -----------------------------------------------
 // styles

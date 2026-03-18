@@ -1,13 +1,14 @@
 import { resolve, dirname } from "path";
+import { existsSync } from "fs";
 
 export interface StateTransformResult {
   code: string;
   mappings: Map<string, string>; // varName -> namespaceAlias
 }
 
-export function transformState(code: string, currentFilePath: string): StateTransformResult {
+export async function transformState(code: string, currentFilePath: string): Promise<StateTransformResult> {
   const regex =
-    /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+\.state(?:\.ts)?)['"]/g;
+    /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+\.state(?:\.ts|\.tsx)?)['"]/g;
 
   const matches: Array<{ full: string; names: string[]; path: string }> = [];
   let m: RegExpExecArray | null;
@@ -28,10 +29,16 @@ export function transformState(code: string, currentFilePath: string): StateTran
   let nsCounter = 0;
   const currentDir = dirname(currentFilePath);
 
-  matches.forEach(({ full, names, path }) => {
+  for (const { full, names, path } of matches) {
     // Resolve relative path to absolute path for consistent keying in reactivity system
     let absolutePath = path.startsWith(".") ? resolve(currentDir, path) : path;
-    if (!absolutePath.endsWith(".ts")) absolutePath += ".ts";
+    
+    // Check for existing file to get correct extension
+    if (!existsSync(absolutePath)) {
+      if (existsSync(absolutePath + ".ts")) absolutePath += ".ts";
+      else if (existsSync(absolutePath + ".tsx")) absolutePath += ".tsx";
+      else absolutePath += ".ts"; // Fallback
+    }
     
     const nsAlias = `__state_${nsCounter++}`;
     const wrap = `import * as ${nsAlias}_orig from '${path}';\nconst ${nsAlias} = __wrapState('${absolutePath}', ${nsAlias}_orig);`;
@@ -41,16 +48,21 @@ export function transformState(code: string, currentFilePath: string): StateTran
     names.forEach((name) => {
       mappings.set(name, nsAlias);
     });
-  });
+  }
 
   // also transform dynamic imports: import('...state')
-  const dynRegex = /import\s*\(['"]([^'"]+\.state(?:\.ts)?)['"]\)/g;
+  const dynRegex = /import\s*\(['"]([^'"]+\.state(?:\.ts|\.tsx)?)['"]\)/g;
   let dynMatch: RegExpExecArray | null;
   while ((dynMatch = dynRegex.exec(result)) !== null) {
     const full = dynMatch[0];
     const path = dynMatch[1];
     let absolutePath = path.startsWith(".") ? resolve(currentDir, path) : path;
-    if (!absolutePath.endsWith(".ts")) absolutePath += ".ts";
+    
+    if (!existsSync(absolutePath)) {
+      if (existsSync(absolutePath + ".ts")) absolutePath += ".ts";
+      else if (existsSync(absolutePath + ".tsx")) absolutePath += ".tsx";
+      else absolutePath += ".ts"; // Fallback
+    }
 
     const wrap = `(import('${path}').then(m => __wrapState('${absolutePath}', m)))`;
     result = result.replace(full, wrap);

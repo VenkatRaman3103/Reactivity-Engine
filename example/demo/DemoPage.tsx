@@ -16,6 +16,7 @@ import DerivedDemo from "./DerivedDemo";
 import EffectDemo from "./EffectDemo";
 import AsyncDemo from "./AsyncDemo";
 import StateDemo from "./StateDemo";
+import WhenDemo from "./WhenDemo";
 
 const modules = [
   {
@@ -59,6 +60,12 @@ const modules = [
     title: "State Guard",
     desc: "Mutation protection",
     component: StateDemo,
+  },
+  {
+    id: "conditional",
+    title: "Conditional",
+    desc: "when() & whenever()",
+    component: WhenDemo,
   },
 ];
 

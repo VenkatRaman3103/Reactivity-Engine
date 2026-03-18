@@ -1,4 +1,5 @@
 import { pushObserver, popObserver, Observer } from "./reactive";
+import { setCurrentOwnerId } from "./lifecycle";
 import {
   registerCleanup,
   registerErrorHandler,
@@ -35,11 +36,13 @@ export class Effect implements Observer {
   cleanups = new Set<() => void>();
   mountedHooks = new Set<any>();
   private cleanupFn?: () => void;
+  public ownerId: string | null = null;
   public disposed = false;
   public depth: number;
 
   constructor(private fn: () => void | (() => void)) {
     this.depth = currentOwner ? ((currentOwner as any).depth || 0) + 1 : 0;
+    this.ownerId = currentOwner ? ((currentOwner as any).id || (currentOwner as any).ownerId || null) : null;
   }
 
   execute() {
@@ -49,6 +52,7 @@ export class Effect implements Observer {
 
     pushObserver(this);
     pushOwner(this);
+    if (this.ownerId) setCurrentOwnerId(this.ownerId);
     try {
       const result = this.fn();
       if (typeof result === "function") {
@@ -68,6 +72,7 @@ export class Effect implements Observer {
           `  })`,
       });
     } finally {
+      if (this.ownerId) setCurrentOwnerId(null);
       popOwner();
       popObserver();
     }

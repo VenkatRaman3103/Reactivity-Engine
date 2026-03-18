@@ -1,6 +1,7 @@
 import { pushOwner, popOwner } from "./effect";
 import { engineError, engineWarn, engineInfo } from "./errors";
 import { cleanupPortals } from "./portal";
+import { setCurrentOwnerId, triggerMount, triggerUnmount, triggerErr, cleanupLifecycle } from "./lifecycle";
 
 export interface Instance {
   id: string;
@@ -93,11 +94,22 @@ function render(inst: Instance) {
   try {
     rendering = inst.id;
     pushOwner(inst as any);
+    setCurrentOwnerId(inst.id);
 
+    const isFirstRender = !inst.mounted;
     const el = inst.fn();
 
+    setCurrentOwnerId(null);
     popOwner();
     rendering = null;
+
+    // Trigger Mount after first render
+    if (isFirstRender) {
+      Promise.resolve().then(() => {
+        triggerMount(inst.id);
+        inst.mounted = true;
+      });
+    }
 
     // error — component returned nothing
     if (el === null || el === undefined) {
@@ -136,8 +148,11 @@ function render(inst: Instance) {
     inst.el = el;
     engineInfo("Component", `'${inst.id}' rendered successfully`);
   } catch (e: any) {
+    setCurrentOwnerId(null);
     popOwner();
     rendering = null;
+
+    triggerErr(inst.id, e);
 
     if (inst.onError) {
       engineWarn({
@@ -183,9 +198,13 @@ export function updateComponent(id: string) {
 export function unmountComponent(id: string) {
   const inst = instances.get(id);
   if (!inst) return;
+
+  triggerUnmount(id);
   inst.cleanups.forEach((fn) => fn());
   inst.cleanups.clear();
   cleanupPortals(id);
+  cleanupLifecycle(id);
+
   if (inst.el && inst.container.contains(inst.el)) {
     inst.container.removeChild(inst.el);
   }

@@ -209,6 +209,19 @@ function wrapObject(file: string, path: string, obj: any): any {
   });
 }
 
+export function trackState(file: string, key: string, value: any) {
+  if (!signalCache.has(file)) {
+    signalCache.set(file, new Map());
+  }
+  const fileSignals = signalCache.get(file)!;
+  if (!fileSignals.has(key)) {
+    const s = new Signal(value);
+    s.label = file;
+    fileSignals.set(key, s);
+  }
+  return fileSignals.get(key)!.value;
+}
+
 export function notifySignal(file: string, key: string, newValue?: any) {
   const fileSignals = signalCache.get(file);
   const signal = fileSignals?.get(key);
