@@ -115,3 +115,12 @@ export function batch(fn: () => void) {
     }
   }
 }
+
+export function untrack<T>(fn: () => T): T {
+  pushObserver(null);
+  try {
+    return fn();
+  } finally {
+    popObserver();
+  }
+}

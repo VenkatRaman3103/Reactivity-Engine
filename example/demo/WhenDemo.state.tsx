@@ -1,5 +1,5 @@
 // example/demo/WhenDemo.state.tsx (force fresh compile v4)
-import { whenever, when } from "@engine/index";
+import { whenever, when, untrack } from "@engine/index";
 
 // --- Part 1: whenever (Counter) ---
 export let count = 0;
@@ -50,7 +50,7 @@ whenever(items, () => {
   }
 });
 
-export function addItem()    { items = [...items, {}]; }
+export function addItem()    { untrack(() => { items = [...items, {}]; }); }
 export function removeItem() { items = items.slice(0, -1); }
 export function clearCart()  { items = []; }
 
@@ -59,7 +59,9 @@ export let lifecycleLogs: string[] = [];
 export let showLiveComponent = false;
 
 export function addLifecycleLog(msg: string) {
-  lifecycleLogs = [`● ${msg}`, ...lifecycleLogs].slice(0, 10);
+  untrack(() => {
+    lifecycleLogs = [`● ${msg}`, ...lifecycleLogs].slice(0, 10);
+  });
 }
 
 export function toggleLiveComponent() {

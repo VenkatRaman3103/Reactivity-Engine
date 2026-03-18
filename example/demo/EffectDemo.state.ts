@@ -1,3 +1,5 @@
+import { untrack } from "@engine/index";
+
 export let count = 0;
 export let logs: string[] = [];
 
@@ -6,7 +8,9 @@ export function increment() {
 }
 
 export function addLog(msg: string) {
-  logs = [`${new Date().toLocaleTimeString()} - ${msg}`, ...logs].slice(0, 5);
+  untrack(() => {
+    logs = [`${new Date().toLocaleTimeString()} - ${msg}`, ...logs].slice(0, 5);
+  });
 }
 export function reset() {
   count = 0;
