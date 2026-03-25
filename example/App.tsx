@@ -8,7 +8,8 @@ export default function App() {
     <div>
       {/* <Greet /> */}
       {/* <Counter /> */}
-      <DemoPage />;{/* <ErrorDemo /> */}
+      <DemoPage />
+      {/* <ErrorDemo /> */}
     </div>
   );
 }

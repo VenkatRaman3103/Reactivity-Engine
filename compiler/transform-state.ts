@@ -10,7 +10,11 @@ export async function transformState(code: string, currentFilePath: string): Pro
   const regex =
     /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+\.state(?:\.ts|\.tsx)?)['"]/g;
 
-  const matches: Array<{ full: string; names: string[]; path: string }> = [];
+  // regex for layout file imports — NEW
+  const layoutRegex =
+    /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+\.layout(?:\.tsx)?)['"]/g;
+
+  const matches: Array<{ full: string; names: string[]; path: string; type: 'state' | 'layout' }> = [];
   let m: RegExpExecArray | null;
 
   while ((m = regex.exec(code)) !== null) {
@@ -21,6 +25,17 @@ export async function transformState(code: string, currentFilePath: string): Pro
         .map((s) => s.trim())
         .filter(Boolean),
       path: m[2],
+      type: 'state'
+    });
+  }
+
+  // collect layout imports
+  while ((m = layoutRegex.exec(code)) !== null) {
+    matches.push({
+      full:  m[0],
+      names: m[1].split(',').map(s => s.trim()).filter(Boolean),
+      path:  m[2],
+      type:  'layout'
     });
   }
 

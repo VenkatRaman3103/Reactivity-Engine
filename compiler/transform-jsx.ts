@@ -48,6 +48,8 @@ function renameStateVarsPlugin({ types: t }: any) {
              if (t.isMemberExpression(path.parent) && path.parent.property === path.node) return;
              if (t.isVariableDeclarator(path.parent) && path.parent.id === path.node) return;
              if (t.isObjectProperty(path.parent) && path.parent.key === path.node) return;
+             if (t.isClassProperty(path.parent) && path.parent.key === path.node) return;
+             if (t.isClassMethod(path.parent) && path.parent.key === path.node) return;
              
              // CRITICAL: Don't rename identifiers in imports!
              if (t.isImportSpecifier(path.parent)) return;

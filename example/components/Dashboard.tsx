@@ -1,0 +1,1 @@
+export default function Dashboard({ user }: { user: any }) { return <div style="color: var(--text-main);"><h2 style="margin-top: 0">User Dashboard</h2><p style="color: var(--text-dim)">Hello {user?.name}</p></div> }

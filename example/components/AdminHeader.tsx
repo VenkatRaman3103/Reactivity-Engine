@@ -1,0 +1,1 @@
+export default function AdminHeader() { return <header class="header admin" style="background: var(--primary); color: white; padding: 1rem; border-bottom: 1px solid var(--border);">Admin Header</header> }

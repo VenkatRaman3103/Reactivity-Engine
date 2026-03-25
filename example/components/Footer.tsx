@@ -1,0 +1,1 @@
+export default function Footer() { return <footer class="footer" style="padding: 1rem; border-top: 1px solid var(--border); background: var(--bg-surface); color: var(--text-dim); text-align: center; font-size: 14px;">App Footer</footer> }

@@ -1,0 +1,1 @@
+export default function Sidebar() { return <aside class="sidebar" style="width: 200px; background: var(--bg-surface); color: var(--text-dim); padding: 1rem; border-right: 1px solid var(--border);">User Sidebar</aside> }

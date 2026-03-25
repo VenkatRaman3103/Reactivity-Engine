@@ -45,7 +45,9 @@ export function wrapState<T extends Record<string, any>>(
   Object.keys(mod).forEach((key) => {
     const initialVal = mod[key];
 
-    if (typeof initialVal === "function") {
+    const isClass = typeof initialVal === "function" && /^\s*class[\s{]/.test(initialVal.toString());
+
+    if (typeof initialVal === "function" && !isClass) {
       // Wrap functions in a batch to group state changes
       wrapped[key] = (...args: any[]) => {
         const before: Record<string, any> = {};
@@ -63,11 +65,14 @@ export function wrapState<T extends Record<string, any>>(
              Object.keys(mod).forEach(k => {
                if (typeof mod[k] !== 'function' && mod[k] !== before[k]) {
                  recordStateChange(file, k, before[k], mod[k]);
+                 
+                 // Sync back to signal so observers are notified
+                 const signal = fileSignals.get(k);
+                 if (signal) {
+                   signal.value = mod[k];
+                 }
                }
              });
-             // in signals we do not do file level notify, the signals already notified 
-             // but if we need a bulk notify:
-             // notifyAllInFile(file)
           }
 
           if (result instanceof Promise) {

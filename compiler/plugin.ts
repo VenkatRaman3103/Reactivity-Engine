@@ -116,7 +116,8 @@ export function engine(): Plugin {
       const isTSX = cleanId.endsWith(".tsx");
       const isTS = cleanId.endsWith(".ts");
       const isState = cleanId.includes(".state.");
-      if (!isTSX && !isTS) return null;
+      const isLayout = cleanId.endsWith(".layout.tsx");
+      if (!isTSX && !isTS && !isLayout) return null;
 
       try {
         let transformedCode = code;

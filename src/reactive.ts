@@ -56,7 +56,7 @@ export class Signal<T> {
   
   notify() {
     if (this.subscribers.size === 0 && !isFlushing && !this._warned) {
-      const isInternal = this.label?.startsWith('engine:') || this.label?.startsWith('internal:');
+      const isInternal = this.label?.startsWith('engine:') || this.label?.startsWith('internal:') || this.label?.startsWith('layout-');
       const isState = this.label?.includes('.state.');
       
       if (!isInternal && !isState) {

@@ -17,6 +17,7 @@ import EffectDemo from "./EffectDemo";
 import AsyncDemo from "./AsyncDemo";
 import StateDemo from "./StateDemo";
 import WhenDemo from "./WhenDemo";
+import LayoutTest from "../LayoutTest";
 
 const modules = [
   {
@@ -66,6 +67,12 @@ const modules = [
     title: "When / Whenever",
     desc: "Lifecycle & Conditions",
     component: WhenDemo,
+  },
+  {
+    id: "layout",
+    title: "Layout System",
+    desc: "Class-based reactivity",
+    component: LayoutTest,
   },
 ];
 

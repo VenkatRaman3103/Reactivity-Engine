@@ -1,0 +1,1 @@
+export default function ReportsContent() { return <div style="color: var(--text-main);"><h2 style="margin-top: 0; color: var(--accent)">Reports</h2><p style="color: var(--text-dim)">Chart data goes here...</p></div> }

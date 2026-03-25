@@ -1,0 +1,1 @@
+export default function LoginPage() { return <div style="color: #ef4444; padding: 1rem; border: 1px solid #ef4444; border-radius: 4px; background: rgba(239,68,68,0.1);">Please log in to continue.</div> }

@@ -1,0 +1,1 @@
+export default function ReportsSidebar() { return <aside class="sidebar reports" style="width: 200px; background: var(--bg-surface); color: var(--accent); font-weight: bold; padding: 1rem; border-right: 1px solid var(--border);">Reports Sidebar</aside> }
