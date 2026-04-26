@@ -1,6 +1,7 @@
 import { suites, Step, clearSnapshots, setViewport, resetViewport }      from './test/index'
 import { play }             from './test/runner'
 import { computeSideBySideDiff, renderSideBySide } from './test/diff'
+import { startNetworkSpy, stopNetworkSpy, CapturedRequest } from './test/network'
 
 // @ts-ignore
 const isDev = import.meta.env.DEV
@@ -19,6 +20,7 @@ const expandedDiffs = new Set<string>()
 // --- Recorder State ---
 let isRecording = false
 let recordedSteps: any[] = []
+let capturedNetworkCalls: CapturedRequest[] = []
 let lastTypedElement: HTMLElement | null = null
 
 const uiCache = {
@@ -28,7 +30,8 @@ const uiCache = {
   logContainer: null as HTMLElement | null,
   testContainer: null as HTMLElement | null,
   coverageContainer: null as HTMLElement | null,
-  recorderOutput: null as HTMLElement | null
+  recorderOutput: null as HTMLElement | null,
+  networkBadge: null as HTMLElement | null
 }
 
 let wrapperEl: HTMLElement | null = null
@@ -113,19 +116,56 @@ function getBestSelector(el: HTMLElement): string {
 
 function updateRecorderUI() {
   if (!uiCache.recorderOutput) return
-  const code = recordedSteps.map(s => {
+
+  // Update live network badge
+  if (uiCache.networkBadge) {
+    const n = capturedNetworkCalls.length
+    uiCache.networkBadge.textContent = `🌐 ${n} call${n === 1 ? '' : 's'}`
+    uiCache.networkBadge.style.opacity = n > 0 ? '1' : '0.35'
+  }
+
+  const mockLines = capturedNetworkCalls.map(c => {
+    const urlStr = c.url.length > 60 ? c.url.slice(0, 60) + '…' : c.url
+    const body   = JSON.stringify(c.response, null, 2)
+      .split('\n').map((l, i) => i === 0 ? l : '      ' + l).join('\n')
+    return `    mock('${urlStr}', ${body}),`
+  })
+
+  const stepLines = recordedSteps.map(s => {
     const selector = s.selector.includes('find.text') ? s.selector : `'${s.selector}'`
     return `    ${s.type}(${selector}${s.text ? `, '${s.text}'` : ''}),`
-  }).join('\n')
+  })
+
+  const allLines = [...mockLines, ...stepLines]
+  const code     = allLines.join('\n')
+  const fullText = `test('Recorded Test', [\n${code}\n])`
+  const hasMocks = mockLines.length > 0
+
+  // Build the syntax-highlighted inner HTML for the <pre>
+  const innerHtml = hasMocks
+    ? `<span style="color:#f0a030">${escHtml(mockLines.join('\n'))}</span>\n${escHtml(stepLines.join('\n'))}`
+    : escHtml(allLines.join('\n'))
 
   uiCache.recorderOutput.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
       <span style="font-size:9px; color:#444; font-weight:900">GENERATED CODE</span>
-      <button onclick="navigator.clipboard.writeText(this.nextElementSibling.innerText); this.textContent='COPIED!'" style="background:#222; border:none; color:#7ec8e3; font-size:9px; padding:3px 8px; border-radius:4px; cursor:pointer">COPY</button>
-      <div style="display:none">test('Recorded Test', [\n${code}\n])</div>
+      <button id="copy-btn" style="background:#222; border:none; color:#7ec8e3; font-size:9px; padding:3px 8px; border-radius:4px; cursor:pointer">COPY</button>
     </div>
-    <pre style="color:#7ec8e3; margin:0; font-size:10px; white-space:pre-wrap; word-break:break-all">test('Recorded Test', [\n${code}\n])</pre>`
+    ${hasMocks ? `<div style="font-size:8px; font-weight:900; color:#f0a030; letter-spacing:0.5px; margin-bottom:4px">⚡ AUTO-MOCKED — ${mockLines.length} network call${mockLines.length === 1 ? '' : 's'} captured</div>` : ''}
+    <pre style="color:#7ec8e3; margin:0; font-size:10px; white-space:pre-wrap; word-break:break-all">test('Recorded Test', [\n${innerHtml}\n])</pre>`
+
+  uiCache.recorderOutput.querySelector('#copy-btn')
+    ?.addEventListener('click', (e) => {
+      navigator.clipboard.writeText(fullText)
+      ;(e.target as HTMLButtonElement).textContent = 'COPIED!'
+      setTimeout(() => { (e.target as HTMLButtonElement).textContent = 'COPY' }, 1500)
+    })
 }
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 
 function updateTestUI(suiteName: string, testName: string, status: any) {
   const key = `${suiteName}:${testName}`
@@ -364,7 +404,8 @@ export function toggleDevPanel() {
          <div id="coverage-root" style="margin-bottom:20px"></div>
          <div class="dt-recorder-bar">
             <span style="font-size:10px; font-weight:900; color:#333">AUTO-RECORDER</span>
-            <div style="display:flex; gap:8px">
+            <div style="display:flex; gap:8px; align-items:center">
+              <span id="network-badge" style="font-size:9px; font-weight:900; color:#f0a030; opacity:0.35; transition:opacity 0.2s">🌐 0 calls</span>
               <button class="dt-record-btn" id="clear-snapshots-btn" style="background:#333; color:#aaa"><i></i> CLEAR SNAPSHOTS</button>
               <button class="dt-record-btn" id="record-btn"><i></i> RECORD</button>
             </div>
@@ -377,6 +418,7 @@ export function toggleDevPanel() {
   uiCache.stateContainer = panel.querySelector('#dt-state'); uiCache.logContainer = panel.querySelector('#dt-logs')
   uiCache.testContainer = panel.querySelector('#tests-tree'); uiCache.recorderOutput = panel.querySelector('#recorder-output')
   uiCache.coverageContainer = panel.querySelector('#coverage-root')
+  uiCache.networkBadge = panel.querySelector('#network-badge')
 
   renderTestStructure(); syncStateUI(); syncLogUI(); syncCoverageUI()
   wrapperEl.appendChild(panel); document.body.appendChild(wrapperEl)
@@ -394,9 +436,19 @@ export function toggleDevPanel() {
   recordBtn.addEventListener('click', () => {
     isRecording = !isRecording
     if (isRecording) {
-      recordedSteps = []; recordBtn.classList.add('active'); recordBtn.innerHTML = '<i></i> STOP RECORDING'
-      uiCache.recorderOutput!.style.display = 'block'; updateRecorderUI()
-    } else { recordBtn.classList.remove('active'); recordBtn.innerHTML = '<i></i> RECORD' }
+      recordedSteps = []
+      capturedNetworkCalls = []
+      startNetworkSpy()
+      recordBtn.classList.add('active')
+      recordBtn.innerHTML = '<i></i> STOP RECORDING'
+      uiCache.recorderOutput!.style.display = 'block'
+      updateRecorderUI()
+    } else {
+      capturedNetworkCalls = stopNetworkSpy()
+      updateRecorderUI()
+      recordBtn.classList.remove('active')
+      recordBtn.innerHTML = '<i></i> RECORD'
+    }
   })
   panel.querySelectorAll('.dt-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -456,8 +508,10 @@ function formatSelector(selector: any): string {
   return String(selector.value)
 }
 
+// @ts-ignore
 if (import.meta.env.DEV) {
   window.addEventListener('keydown', e => {
     if (e.ctrlKey && e.shiftKey && e.key === 'E') toggleDevPanel()
   })
 }
+
