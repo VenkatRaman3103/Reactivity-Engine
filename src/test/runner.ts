@@ -1,7 +1,7 @@
 
 import { Step } from './index'
 import { log }  from '../log'
-import { moveCursorTo } from './cursor'
+import { moveCursorTo, clickRipple } from './cursor'
 import { showTestOverlay } from './overlay'
 
 export interface PlayOptions {
@@ -90,30 +90,40 @@ async function runStep(step: Step, speed: number) {
   switch (step.type) {
 
     case 'click': {
-      const el = await waitForElement(step.selector, AUTO_TIMEOUT)
+      const el = await waitForElement(step.selector, AUTO_TIMEOUT) as HTMLElement
+      highlight(el)
+      await ensureInViewport(el)
       moveCursorTo(el)
-      await sleep(speed / 2)
-      ;(el as HTMLElement).click()
+      await sleep(speed)
+      clickRipple()
+      await sleep(200)
+      el.click()
       await settle()
       break
     }
 
     case 'type': {
       const el = await waitForElement(step.selector, AUTO_TIMEOUT) as HTMLInputElement
+      highlight(el)
+      await ensureInViewport(el)
       moveCursorTo(el)
+      await sleep(speed)
       el.focus()
       for (const char of step.text) {
         el.value += char
         el.dispatchEvent(new Event('input', { bubbles: true }))
-        await sleep(speed / 10)
+        await sleep(50)
       }
       await settle()
       break
     }
 
     case 'hover': {
-      const el = await waitForElement(step.selector, AUTO_TIMEOUT)
+      const el = await waitForElement(step.selector, AUTO_TIMEOUT) as HTMLElement
+      highlight(el)
+      await ensureInViewport(el)
       moveCursorTo(el)
+      await sleep(speed)
       el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }))
       break
     }
@@ -284,8 +294,29 @@ function isElementVisible(el: HTMLElement): boolean {
 /**
  * Wait for reactivity microtasks to settle
  */
+async function ensureInViewport(el: HTMLElement) {
+  const rect = el.getBoundingClientRect()
+  const isVisible = (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  )
+
+  if (!isVisible) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Wait for the smooth scroll to finish
+    await sleep(600)
+  }
+}
+
 async function settle() {
   return new Promise(r => queueMicrotask(() => setTimeout(r, 0)))
+}
+
+function highlight(el: HTMLElement) {
+  el.classList.add('engine-test-highlight')
+  setTimeout(() => el.classList.remove('engine-test-highlight'), 1000)
 }
 
 function sleep(ms: number) {

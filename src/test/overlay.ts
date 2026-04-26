@@ -25,6 +25,18 @@ export function showTestOverlay(name: string, steps: Step[]) {
   injectTestStyles()
   document.body.appendChild(el)
 
+  // Block user input while testing
+  const shield = document.createElement('div')
+  shield.id = 'engine-test-shield'
+  Object.assign(shield.style, {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    zIndex: '99996',
+    pointerEvents: 'all',
+    cursor: 'wait'
+  })
+  document.body.appendChild(shield)
+
   return {
     setActive(i: number) {
       el.querySelectorAll('.test-step')
@@ -44,6 +56,7 @@ export function showTestOverlay(name: string, steps: Step[]) {
     },
 
     setComplete(passed: boolean, time: number) {
+      document.getElementById('engine-test-shield')?.remove()
       const status = el.querySelector('.test-status')!
       status.textContent = passed ? 'Passed' : 'Failed'
       status.className   = `test-status ${passed ? 'passed' : 'failed'}`
@@ -95,7 +108,7 @@ function injectTestStyles() {
       border:     1px solid #333;
       border-radius: 8px;
       width:      320px;
-      z-index:    99997;
+      z-index:    100000;
       font-family: monospace;
       font-size:  12px;
       overflow:   hidden;
