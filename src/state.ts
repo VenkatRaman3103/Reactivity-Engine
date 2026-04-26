@@ -4,6 +4,8 @@ import { stateModules, snapshotRegistry } from "./memo";
 import { registerStateFile, recordStateChange } from "./devtools";
 import { trackAsync } from "./suspense";
 
+export const globalStateListeners = new Set<(file: string, key: string, value: any) => void>();
+
 const signalCache = new Map<string, Map<string, Signal<any>>>();
 
 export function getSignalCache() {
@@ -233,6 +235,7 @@ export function notifySignal(file: string, key: string, newValue?: any) {
       signal.notify();
     }
   }
+  globalStateListeners.forEach(fn => fn(file, key, newValue));
 }
 
 export function notifyAllInFile(file: string) {

@@ -10,6 +10,9 @@ export * from "./state";
 export * from "./layout";
 export * from "./test/index";
 export { whenever, when } from "./when";
+export { persist, clearPersisted,
+         clearAllPersisted,
+         getPersistedKeys }    from './persist'
 export { Mount, Unmount, Err, type ErrObject } from "./lifecycle";
 export {
   showOverlay,

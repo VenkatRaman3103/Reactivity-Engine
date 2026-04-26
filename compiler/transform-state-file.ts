@@ -59,6 +59,43 @@ function stateAssignmentsPlugin({ types: t }: any) {
 
   return {
     visitor: {
+      CallExpression(path: any, state: any) {
+        if (t.isIdentifier(path.node.callee) && path.node.callee.name === 'persist') {
+          const objExpr = path.node.arguments[1];
+          if (t.isObjectExpression(objExpr)) {
+             const props = objExpr.properties.map((p: any) => p.key.name || p.key.value);
+             const filename = state.file.opts.filename;
+             const assignments = props.map((prop: string) => {
+                const left = t.identifier(prop);
+                const right = t.memberExpression(t.identifier("__restored__"), t.identifier(prop));
+                return t.ifStatement(
+                    t.binaryExpression("in", t.stringLiteral(prop), t.identifier("__restored__")),
+                    t.expressionStatement(
+                        t.sequenceExpression([
+                            t.assignmentExpression("=", left, right),
+                            t.callExpression(t.identifier("__notifySignal"), [t.stringLiteral(filename), t.stringLiteral(prop), left]),
+                            left
+                        ])
+                    )
+                );
+             });
+             
+             const restoreFn = t.arrowFunctionExpression(
+                [t.identifier("__restored__")],
+                t.blockStatement(assignments)
+             );
+
+             if (path.node.arguments.length === 2) {
+                path.node.arguments.push(t.objectExpression([]));
+             }
+             path.node.arguments.push(t.stringLiteral(filename));
+             path.node.arguments.push(restoreFn);
+             
+             // Mark ast to avoid infinite loop
+             path.node.callee.name = 'persist';
+          }
+        }
+      },
       Program: {
         enter(path: any, state: any) {
           state.exportedVars = new Set<string>();

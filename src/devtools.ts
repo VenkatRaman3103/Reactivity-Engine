@@ -2,6 +2,7 @@ import { suites, Step, clearSnapshots, setViewport, resetViewport }      from '.
 import { play }             from './test/runner'
 import { computeSideBySideDiff, renderSideBySide } from './test/diff'
 import { startNetworkSpy, stopNetworkSpy, CapturedRequest } from './test/network'
+import { getPersistedKeys, clearPersisted, clearAllPersisted, PersistEntry } from './persist'
 
 // @ts-ignore
 const isDev = import.meta.env.DEV
@@ -31,7 +32,8 @@ const uiCache = {
   testContainer: null as HTMLElement | null,
   coverageContainer: null as HTMLElement | null,
   recorderOutput: null as HTMLElement | null,
-  networkBadge: null as HTMLElement | null
+  networkBadge: null as HTMLElement | null,
+  storageContainer: null as HTMLElement | null
 }
 
 let wrapperEl: HTMLElement | null = null
@@ -394,11 +396,13 @@ export function toggleDevPanel() {
     <div class="dt-header"><span>⚡ ENGINE DEVTOOLS</span><button class="dt-close">✕</button></div>
     <div class="dt-tabs">
       <button class="dt-tab active" data-tab="state">State</button>
+      <button class="dt-tab" data-tab="storage">Storage</button>
       <button class="dt-tab" data-tab="logs">Logs</button>
       <button class="dt-tab" data-tab="tests">Tests</button>
     </div>
     <div class="dt-body">
       <div class="dt-panel active" id="dt-state"></div>
+      <div class="dt-panel" id="dt-storage"></div>
       <div class="dt-panel" id="dt-logs"></div>
       <div class="dt-panel" id="dt-tests">
          <div id="coverage-root" style="margin-bottom:20px"></div>
@@ -416,15 +420,19 @@ export function toggleDevPanel() {
     </div>
   `
   uiCache.stateContainer = panel.querySelector('#dt-state'); uiCache.logContainer = panel.querySelector('#dt-logs')
+  uiCache.storageContainer = panel.querySelector('#dt-storage');
   uiCache.testContainer = panel.querySelector('#tests-tree'); uiCache.recorderOutput = panel.querySelector('#recorder-output')
   uiCache.coverageContainer = panel.querySelector('#coverage-root')
   uiCache.networkBadge = panel.querySelector('#network-badge')
 
-  renderTestStructure(); syncStateUI(); syncLogUI(); syncCoverageUI()
+  renderTestStructure(); syncStateUI(); syncStorageUI(); syncLogUI(); syncCoverageUI()
   wrapperEl.appendChild(panel); document.body.appendChild(wrapperEl)
 
   panel.querySelector('.dt-close')?.addEventListener('click', toggleDevPanel)
   
+  // Auto-refresh storage tab
+  window.addEventListener('engine:storage-updated', syncStorageUI)
+
   panel.querySelector('#clear-snapshots-btn')?.addEventListener('click', () => {
     if (confirm('Clear all visual snapshots?')) {
       clearSnapshots()
@@ -459,6 +467,69 @@ export function toggleDevPanel() {
   })
   uiCache.testContainer?.querySelectorAll('.dt-run-btn').forEach(btn => {
     btn.addEventListener('click', () => { play((btn as HTMLElement).dataset.suite!, undefined, { devToolsReporter: true }) })
+  })
+}
+
+function syncStorageUI() {
+  if (!uiCache.storageContainer) return
+  const persistedKeys = getPersistedKeys()
+  const storageRows: string[] = []
+
+  persistedKeys.forEach(key => {
+    const raw  = localStorage.getItem(`engine:${key}`)
+    if (!raw) return
+    const entry: PersistEntry = JSON.parse(raw)
+
+    storageRows.push(
+      `<div class="dt-file-header">${key}</div>`
+    )
+
+    Object.entries(entry.value).forEach(([k, v]) => {
+      const display = JSON.stringify(v)
+      const short   = display.length > 40
+        ? display.slice(0, 40) + '…'
+        : display
+
+      storageRows.push(
+        `<div class="dt-row">` +
+        `<span class="dt-key">${k}</span>` +
+        `<span class="dt-val">${short}</span>` +
+        `</div>`
+      )
+    })
+
+    // show age
+    const age = Math.floor((Date.now() - entry.timestamp) / 1000)
+    storageRows.push(
+      `<div class="dt-row">` +
+      `<span class="dt-key dt-meta">saved ${age}s ago</span>` +
+      `<button class="dt-clear" data-key="${key}" style="background:#222; border:none; color:#ff5f56; font-size:9px; padding:2px 6px; border-radius:3px; cursor:pointer; margin-left:10px;">Clear</button>` +
+      `</div>`
+    )
+  })
+
+  const header = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px">
+      <span style="font-size:10px; font-weight:800; color:#555">PERSISTED DATA</span>
+      <button id="clear-all-storage" style="background:#ff5f56; color:#111; font-size:9px; font-weight:900; padding:4px 10px; border:none; border-radius:4px; cursor:pointer">RESET ALL</button>
+    </div>
+  `
+
+  uiCache.storageContainer.innerHTML = header + (storageRows.join('') || '<div class="dt-empty">Nothing persisted yet</div>')
+
+  uiCache.storageContainer.querySelector('#clear-all-storage')?.addEventListener('click', () => {
+    if (confirm('Clear all persisted storage and reload?')) {
+      clearAllPersisted()
+      window.location.reload()
+    }
+  })
+
+  uiCache.storageContainer.querySelectorAll('.dt-clear').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = (btn as HTMLElement).dataset.key!
+      clearPersisted(key)
+      syncStorageUI()
+    })
   })
 }
 
