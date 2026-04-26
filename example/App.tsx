@@ -1,15 +1,9 @@
-import Counter from "./components/Counter";
-import ErrorDemo from "./components/ErrorDemo";
-import Greet from "./components/Greet";
-import DemoPage from "./demo/DemoPage";
+import Button from "./Button";
 
 export default function App() {
   return (
     <div>
-      {/* <Greet /> */}
-      {/* <Counter /> */}
-      <DemoPage />
-      {/* <ErrorDemo /> */}
+      <Button>Styled Reactive Button</Button>
     </div>
   );
 }

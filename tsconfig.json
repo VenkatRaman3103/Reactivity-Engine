@@ -11,6 +11,9 @@
         "jsxFragmentFactory": "__Fragment",
         "baseUrl": ".",
         "paths": {
+            "@engine/style": ["packages/style/src/index.ts"],
+            "@engine/style/*": ["packages/style/src/*"],
+            "@engine": ["src/index.ts"],
             "@engine/*": ["src/*"]
         },
         "types": ["node"]
@@ -18,6 +21,7 @@
     "include": [
         "src",
         "compiler",
-        "example"
+        "example",
+        "packages"
     ]
 }

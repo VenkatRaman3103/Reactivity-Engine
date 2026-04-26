@@ -45,6 +45,9 @@ export function engine(): Plugin {
     },
 
     resolveId(source: string) {
+      if (source === "@engine/style" || source.startsWith("@engine/style/")) {
+        return null;
+      }
       if (source === "@engine/index" || source === "@engine") {
         return resolve(__dirname, "../src/index.ts");
       }
