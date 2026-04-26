@@ -2,6 +2,9 @@
 import { Step } from './index'
 
 export function showTestOverlay(name: string, steps: Step[]) {
+  // Prevent overlapping overlays
+  document.getElementById('engine-test-overlay')?.remove()
+  
   const el    = document.createElement('div')
   el.id       = 'engine-test-overlay'
 

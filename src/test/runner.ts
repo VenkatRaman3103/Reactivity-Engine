@@ -6,6 +6,7 @@ import { showTestOverlay } from './overlay'
 export interface PlayOptions {
   speed?:  'slow' | 'normal' | 'fast'
   silent?: boolean
+  devToolsReporter?: boolean
 }
 
 const SPEEDS = { slow: 800, normal: 400, fast: 100 }
@@ -17,47 +18,72 @@ interface StepResult {
   time:    number
 }
 
+let isRunning = false
+
 export async function play(
   target:  string | Step[],
   steps?:  Step[],
   options: PlayOptions = {}
 ): Promise<any> {
-  // Signature 1: play(steps, options)
-  if (Array.isArray(target)) {
-    return runStandalone('Anonymous Test', target, steps as any || options)
+  if (isRunning) {
+    log.test_debug('Test already in progress, ignoring request.')
+    return
   }
 
-  // Signature 2: play(name, steps, options)
-  if (typeof target === 'string' && Array.isArray(steps)) {
-    return runStandalone(target, steps, options)
-  }
+  isRunning = true
+  try {
+    // Signature 1: play(steps, options)
+    if (Array.isArray(target)) {
+      return await runStandalone('Anonymous Test', target, steps as any || options)
+    }
 
-  // Signature 3: play(suiteName, options)
-  if (typeof target === 'string') {
-    const matchedSuite = suites.find(s => s.name === target)
-    if (!matchedSuite) throw new Error(`Suite "${target}" not found`)
-    return runSuite(matchedSuite, steps as any || options)
+    // Signature 2: play(name, steps, options)
+    if (typeof target === 'string' && Array.isArray(steps)) {
+      return await runStandalone(target, steps, options)
+    }
+
+    // Signature 3: play(suiteName, options)
+    if (typeof target === 'string') {
+      const matchedSuite = suites.find(s => s.name === target)
+      if (!matchedSuite) throw new Error(`Suite "${target}" not found`)
+      return await runSuite(matchedSuite, steps as any || options)
+    }
+  } finally {
+    isRunning = false
   }
 }
 
 async function runStandalone(name: string, steps: Step[], options: PlayOptions) {
   const speed = SPEEDS[options.speed ?? 'normal']
-  const overlay = showTestOverlay(name, steps)
+  const overlay = !options.devToolsReporter ? showTestOverlay(name, steps) : null
   const results: StepResult[] = []
   const start = performance.now()
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i]
     const stepStart = performance.now()
-    overlay.setActive(i)
+    overlay?.setActive(i)
+
+    // Signal active step to DevTools
+    if (options.devToolsReporter) {
+      const suiteName = name.split(' > ')[0]
+      const testName = name.split(' > ')[1]
+      ;(window as any).__engine?.updateTestStatus?.(suiteName, testName, { running: true, activeStep: i })
+    }
 
     try {
       await runStep(step, speed)
       results.push({ step, passed: true, time: performance.now() - stepStart })
-      overlay.setResult(i, true)
+      overlay?.setResult(i, true)
     } catch (e: any) {
       results.push({ step, passed: false, error: e.message, time: performance.now() - stepStart })
-      overlay.setResult(i, false, e.message)
+      overlay?.setResult(i, false, e.message)
+      
+      if (options.devToolsReporter) {
+        const suiteName = name.split(' > ')[0]
+        const testName = name.split(' > ')[1]
+        ;(window as any).__engine?.updateTestStatus?.(suiteName, testName, { running: false, passed: false, activeStep: i, error: e.message })
+      }
       break
     }
     await sleep(speed)
@@ -65,7 +91,7 @@ async function runStandalone(name: string, steps: Step[], options: PlayOptions) 
 
   const passed = results.every(r => r.passed)
   const time = performance.now() - start
-  overlay.setComplete(passed, time)
+  overlay?.setComplete(passed, time)
   removeCursor()
 
   if (!options.silent) {
@@ -79,10 +105,14 @@ async function runSuite(suite: SuiteDefinition, options: PlayOptions = {}) {
   log.test_debug(`Running Suite: ${suite.name}`)
   const suiteResults = []
 
+  const engine = (window as any).__engine
+
   for (const t of suite.tests) {
+    // Signal start to DevTools
+    engine?.updateTestStatus?.(suite.name, t.name, { running: true })
+
     // Run beforeEach if it exists
     if (suite.beforeEach) {
-      log.test_debug(`Running beforeEach for: ${t.name}`)
       await suite.beforeEach()
       await settle()
     }
@@ -90,13 +120,25 @@ async function runSuite(suite: SuiteDefinition, options: PlayOptions = {}) {
     const result = await runStandalone(`${suite.name} > ${t.name}`, t.steps, options)
     suiteResults.push(result)
     
-    // If a test fails, we stop the suite? (Usually yes in E2E)
+    // Signal result to DevTools (only if not already handled by standalone failure)
+    engine?.updateTestStatus?.(suite.name, t.name, { 
+      running: false, 
+      passed: result.passed,
+      activeStep: result.passed ? t.steps.length : result.results.length - 1,
+      error: result.results.find(r => !r.passed)?.error 
+    })
+
     if (!result.passed) break
-    
-    await sleep(1000) // Small gap between tests
+    await sleep(speedToMs(options.speed || 'normal'))
   }
   
   return suiteResults
+}
+
+function speedToMs(speed: string): number {
+  if (speed === 'slow') return 1000
+  if (speed === 'fast') return 200
+  return 500
 }
 
 async function runStep(step: Step, speed: number) {
