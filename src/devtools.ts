@@ -1,4 +1,4 @@
-import { suites, Step, clearSnapshots }      from './test/index'
+import { suites, Step, clearSnapshots, setViewport, resetViewport }      from './test/index'
 import { play }             from './test/runner'
 
 // @ts-ignore
@@ -7,6 +7,10 @@ const isDev = import.meta.env.DEV
 const stateRegistry = new Map<string, Record<string, any>>()
 const history: any[] = []
 const MAX_HISTORY = 50
+
+// --- Coverage State ---
+const touchedKeys = new Set<string>()
+const collapsedFiles = new Set<string>()
 
 // --- Recorder State ---
 let isRecording = false
@@ -19,6 +23,7 @@ const uiCache = {
   stateContainer: null as HTMLElement | null,
   logContainer: null as HTMLElement | null,
   testContainer: null as HTMLElement | null,
+  coverageContainer: null as HTMLElement | null,
   recorderOutput: null as HTMLElement | null
 }
 
@@ -28,6 +33,7 @@ let activeTab: string = 'state'
 export function registerStateFile(file: string, mod: any) {
   if (!isDev) return
   stateRegistry.set(file, mod)
+  collapsedFiles.add(file) // Collapse by default
 }
 
 export function recordStateChange(file: string, key: string, oldVal: any, newVal: any) {
@@ -43,7 +49,16 @@ export function initDevTools() {
     updateTestStatus(suiteName: string, testName: string, status: any) {
       updateTestUI(suiteName, testName, status)
     },
-    refreshLogPanel() { syncLogUI() }
+    refreshLogPanel() { syncLogUI() },
+    recordAccess(label: string) {
+      if (touchedKeys.has(label)) return
+      touchedKeys.add(label)
+      syncCoverageUI()
+    },
+    clearCoverage() {
+      touchedKeys.clear()
+      syncCoverageUI()
+    }
   }
 
   window.addEventListener('click', handleGlobalClick, true)
@@ -137,6 +152,8 @@ function updateTestUI(suiteName: string, testName: string, status: any) {
       else if (status.passed === true || (status.running && i < status.activeStep)) el.classList.add('passed')
     })
   }
+
+  if (!status.running) syncCoverageUI()
 }
 
 function syncStateUI() {
@@ -165,9 +182,74 @@ function syncLogUI() {
   uiCache.logContainer.innerHTML = html || '<div class="dt-empty">No logs</div>'
 }
 
+function syncCoverageUI() {
+  if (!uiCache.coverageContainer) return
+  
+  let totalProps = 0
+  let coveredProps = 0
+  let html = ''
+
+  stateRegistry.forEach((mod, file) => {
+    const filename = file.split('/').pop()
+    const fileProps: string[] = []
+    
+    Object.keys(mod).forEach(k => {
+      if (typeof mod[k] === 'function') return
+      totalProps++
+      const label = `${file}:${k}`
+      const isCovered = touchedKeys.has(label)
+      if (isCovered) coveredProps++
+      
+      fileProps.push(`
+        <div class="dt-row" style="padding-left:12px; margin:2px 0; border-radius:4px; ${isCovered ? 'background:rgba(78,202,139,0.05)' : ''}">
+          <span class="dt-test-status ${isCovered ? 'passed' : ''}" style="margin-right:10px; font-size:10px; width:12px">${isCovered ? '✓' : '○'}</span>
+          <span class="dt-key" style="color: ${isCovered ? '#4eca8b' : '#777'}; font-size:11px">${k}</span>
+          <span class="dt-val" style="font-size:9px; opacity:0.5">${isCovered ? 'Tested' : 'Untested'}</span>
+        </div>`)
+    })
+
+    const isCollapsed = collapsedFiles.has(file)
+    html += `
+      <div class="dt-coverage-file">
+        <div class="dt-file-header dt-collapsible ${isCollapsed ? 'collapsed' : ''}" data-file="${file}" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:8px 0">
+           <span>${filename}</span>
+           <span style="font-size:8px; opacity:0.5">${isCollapsed ? '▶' : '▼'}</span>
+        </div>
+        <div style="display: ${isCollapsed ? 'none' : 'block'}; margin-bottom:10px">
+          ${fileProps.join('')}
+        </div>
+      </div>`
+  })
+
+  const percent = totalProps === 0 ? 0 : Math.round((coveredProps / totalProps) * 100)
+  const header = `
+    <div style="background: #111; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #1a1a1a">
+       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <span style="font-size:9px; font-weight:900; color:#555; letter-spacing:0.5px">SESSION COVERAGE</span>
+          <span style="font-size:14px; font-weight:900; color:#4eca8b">${percent}%</span>
+       </div>
+       <div style="height:3px; background:#1a1a1a; border-radius:1.5px; overflow:hidden">
+          <div style="width:${percent}%; height:100%; background:#4eca8b; transition: width 0.3s ease"></div>
+       </div>
+    </div>
+  `
+
+  uiCache.coverageContainer.innerHTML = header + html
+  
+  // Wire up toggles
+  uiCache.coverageContainer.querySelectorAll('.dt-collapsible').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const f = (el as HTMLElement).dataset.file!
+      if (collapsedFiles.has(f)) collapsedFiles.delete(f)
+      else collapsedFiles.add(f)
+      syncCoverageUI()
+    })
+  })
+}
+
 const panelStyles = `
   #engine-devtools-wrapper { position: fixed; bottom: 20px; right: 20px; z-index: 100005; font-family: system-ui, sans-serif; pointer-events: none; }
-  #engine-devtools { pointer-events: auto; background: #0a0a0a; border-radius: 16px; width: 450px; height: 500px; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
+  #engine-devtools { pointer-events: auto; background: #0a0a0a; border-radius: 16px; width: 450px; height: 550px; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
   .dt-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: #000; border-bottom: 1px solid rgba(255,255,255,0.05); }
   .dt-header span { font-size: 11px; font-weight: 800; color: #7ec8e3; letter-spacing: 1px; }
   .dt-close { background: none; border: none; color: #444; cursor: pointer; font-size: 14px; }
@@ -228,6 +310,7 @@ export function toggleDevPanel() {
       <div class="dt-panel active" id="dt-state"></div>
       <div class="dt-panel" id="dt-logs"></div>
       <div class="dt-panel" id="dt-tests">
+         <div id="coverage-root" style="margin-bottom:20px"></div>
          <div class="dt-recorder-bar">
             <span style="font-size:10px; font-weight:900; color:#333">AUTO-RECORDER</span>
             <div style="display:flex; gap:8px">
@@ -242,8 +325,9 @@ export function toggleDevPanel() {
   `
   uiCache.stateContainer = panel.querySelector('#dt-state'); uiCache.logContainer = panel.querySelector('#dt-logs')
   uiCache.testContainer = panel.querySelector('#tests-tree'); uiCache.recorderOutput = panel.querySelector('#recorder-output')
+  uiCache.coverageContainer = panel.querySelector('#coverage-root')
 
-  renderTestStructure(); syncStateUI(); syncLogUI()
+  renderTestStructure(); syncStateUI(); syncLogUI(); syncCoverageUI()
   wrapperEl.appendChild(panel); document.body.appendChild(wrapperEl)
 
   panel.querySelector('.dt-close')?.addEventListener('click', toggleDevPanel)

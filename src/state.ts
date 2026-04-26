@@ -113,7 +113,7 @@ export function wrapState<T extends Record<string, any>>(
       // Create or get the signal for this property
       if (!fileSignals.has(key)) {
         const s = new Signal(initialVal);
-        s.label = file;
+        s.label = `${file}:${key}`;
         fileSignals.set(key, s);
       }
       const signal = fileSignals.get(key)!;

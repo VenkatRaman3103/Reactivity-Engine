@@ -38,12 +38,14 @@ export class Signal<T> {
       this.subscribers.add(activeObserver);
       activeObserver.dependencies.add(this.subscribers);
     }
+    if (this.label) (window as any).__engine?.recordAccess?.(this.label);
     return this._value;
   }
 
   set value(next: T) {
     if (this._value === next) return;
     this._value = next;
+    if (this.label) (window as any).__engine?.recordAccess?.(this.label);
 
     if (batchCount > 0) {
       pendingNotifications.add(this);
