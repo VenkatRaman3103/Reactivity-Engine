@@ -32,6 +32,10 @@ export { toggleDevPanel } from "./devtools";
 export { Suspense, trackAsync, isPending } from "./suspense";
 export { slot } from "./slot";
 export { portal, closePortal } from "./portal";
+export { log } from "./log";
+export { play } from "./test/runner";
+export { click, type, wait, expect, see, pause } from "./test/index";
+export * from "./utils/index";
 
 if (import.meta.env.DEV) {
   Promise.all([
@@ -43,3 +47,4 @@ if (import.meta.env.DEV) {
 
 // trigger vite reload
 // trigger 2
+// trigger 3

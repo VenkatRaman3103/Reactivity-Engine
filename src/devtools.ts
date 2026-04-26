@@ -2,6 +2,7 @@ import { instances }         from './component'
 
 // In a typical dev env, importing signalCache exposes internal structure
 import { getSignalCache }    from './state'
+import { getLogChannels }   from './log'
 
 // @ts-ignore - env provided by Vite
 const isDev = import.meta.env.DEV
@@ -122,6 +123,14 @@ export function initDevTools() {
         }))
       )
       return history
+    },
+
+    refreshLogPanel() {
+      if (wrapperEl) renderPanel()
+    },
+
+    registerLogChannel() {
+      if (wrapperEl) renderPanel()
     }
   }
 
@@ -388,6 +397,22 @@ function renderPanel() {
       `</div>`
     )
 
+  // log section
+  const logRows: string[] = []
+  getLogChannels().forEach((entries, name) => {
+    logRows.push(
+      `<div class="dt-file">${name} (${entries.length})</div>`
+    )
+    entries.slice(-5).reverse().forEach(entry => {
+      logRows.push(
+        `<div class="dt-row">` +
+        `<span class="dt-key">${entry.time}</span>` +
+        `<span class="dt-val">${JSON.stringify(entry.value)}</span>` +
+        `</div>`
+      )
+    })
+  })
+
   panelEl.innerHTML = `
     <div class="dt-header">
       <span>⚡ Engine DevTools</span>
@@ -398,6 +423,7 @@ function renderPanel() {
       <button class="dt-tab" data-tab="components">Components</button>
       <button class="dt-tab" data-tab="subscriptions">Subscriptions</button>
       <button class="dt-tab" data-tab="history">History</button>
+      <button class="dt-tab" data-tab="logs">Logs</button>
     </div>
     <div class="dt-body">
       <div class="dt-panel active" id="dt-state">
@@ -411,6 +437,9 @@ function renderPanel() {
       </div>
       <div class="dt-panel" id="dt-history">
         ${histRows.join('') || '<div class="dt-empty">No state changes yet</div>'}
+      </div>
+      <div class="dt-panel" id="dt-logs">
+        ${logRows.join('') || '<div class="dt-empty">No logs yet</div>'}
       </div>
     </div>
   `

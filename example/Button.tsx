@@ -1,8 +1,13 @@
 
 import { button } from './button.style'
 import { toggleDisabled, cycleVariant } from './button.state'
+import { log } from '@engine'
 
 export default function Button(props: { children?: any }) {
+
+  log.greet("Hello world")
+  log.hello("Hello world")
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px' }}>
       <div>
@@ -15,10 +20,10 @@ export default function Button(props: { children?: any }) {
       </div>
 
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button onClick={toggleDisabled}>
+        <button id="toggle-btn" onClick={toggleDisabled}>
           Toggle Disabled
         </button>
-        <button onClick={cycleVariant}>
+        <button id="cycle-btn" onClick={cycleVariant}>
           Cycle Variant
         </button>
       </div>
