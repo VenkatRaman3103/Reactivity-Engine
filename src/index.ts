@@ -43,6 +43,7 @@ export {
   suite, test, beforeEach, mock
 } from "./test/index";
 export * from "./utils/index";
+export { lazy, type LazyOptions } from "./lazy";
 
 if (import.meta.env.DEV) {
   Promise.all([
@@ -54,7 +55,8 @@ if (import.meta.env.DEV) {
     import('../example/advanced.test'),
     import('../example/network.test'),
     import('../example/snapshot.test'),
-    import('../example/viewport.test')
+    import('../example/viewport.test'),
+    import('../example/lazy-demo.test')
   ])
 }
 

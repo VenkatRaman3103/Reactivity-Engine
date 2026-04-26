@@ -3,6 +3,7 @@ import KitchenSink from "./KitchenSink";
 import SVGDemo from "./SVGDemo";
 import BindingDemo from "./BindingDemo";
 import PersistDemo from "./PersistDemo";
+import LazyDemo from "./LazyDemo";
 import { runDemoTest } from "./demo.test";
 import { runKitchenSinkSuite } from "./kitchen-sink.test";
 import { runStressTest } from "./stress.test";
@@ -55,6 +56,17 @@ export default function App() {
           </p>
         </div>
         <PersistDemo />
+      </div>
+
+      {/* Lazy Loading Demo */}
+      <div style={{ borderTop: '2px solid #eee', paddingTop: '40px', marginTop: '40px' }}>
+        <div style={{ marginBottom: '32px' }}>
+          <h2 style={{ margin: '0 0 6px', fontSize: '20px', color: '#111' }}>Lazy Loading</h2>
+          <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+            Load components only when needed with <code style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>lazy()</code>.
+          </p>
+        </div>
+        <LazyDemo />
       </div>
 
       <div style={{ borderTop: '2px solid #eee', marginTop: '40px' }}>
