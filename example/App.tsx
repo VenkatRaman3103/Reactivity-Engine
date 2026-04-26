@@ -3,6 +3,7 @@ import KitchenSink from "./KitchenSink";
 import { runDemoTest } from "./demo.test";
 import { runKitchenSinkTest } from "./kitchen-sink.test";
 import { runStressTest } from "./stress.test";
+import { runAdvancedTest } from "./advanced.test";
 import { device } from "@engine";
 
 export default function App() {
@@ -15,6 +16,12 @@ export default function App() {
             style={{ padding: '10px 20px', background: '#7ec8e3', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
           >
             ▶ Run Simple Test
+          </button>
+          <button 
+            onClick={runAdvancedTest}
+            style={{ padding: '10px 20px', background: '#3b82f6', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            🔍 Run Advanced Features Test (Text/Role/Visible)
           </button>
           <button 
             onClick={runKitchenSinkTest}

@@ -34,7 +34,7 @@ export { slot } from "./slot";
 export { portal, closePortal } from "./portal";
 export { log } from "./log";
 export { play } from "./test/runner";
-export { click, type, wait, expect, see, pause } from "./test/index";
+export { click, type, wait, expect, see, pause, find } from "./test/index";
 export * from "./utils/index";
 
 if (import.meta.env.DEV) {

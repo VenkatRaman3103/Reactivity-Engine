@@ -61,15 +61,24 @@ export function showTestOverlay(name: string, steps: Step[]) {
 
 function describeStep(step: Step): string {
   switch (step.type) {
-    case 'click':   return `click ${step.selector}`
-    case 'type':    return `type "${step.text}" in ${step.selector}`
+    case 'click':   return `click ${formatSelector(step.selector)}`
+    case 'type':    return `type "${step.text}" in ${formatSelector(step.selector)}`
+    case 'hover':   return `hover ${formatSelector(step.selector)}`
+    case 'focus':   return `focus ${formatSelector(step.selector)}`
     case 'wait':    return `wait for condition`
-    case 'expect':  return `expect value ${step.matcher} ${JSON.stringify(step.expected)}`
-    case 'see':     return `see ${step.selector} ${step.exists ? 'exists' : 'absent'}`
+    case 'expect':  return `expect ${step.matcher} ${step.expected !== undefined ? JSON.stringify(step.expected) : ''}`
+    case 'see':     return `see ${formatSelector(step.selector)} ${step.exists ? 'exists' : 'absent'}`
     case 'pause':   return `pause ${step.ms}ms`
     case 'log':     return `log to ${step.channel}`
     default:        return 'unknown step'
   }
+}
+
+function formatSelector(selector: any): string {
+  if (typeof selector === 'string') return selector
+  if (selector.type === 'text') return `text("${selector.value}")`
+  if (selector.type === 'role') return `role("${selector.roleType}", "${selector.value}")`
+  return selector.value
 }
 
 function injectTestStyles() {

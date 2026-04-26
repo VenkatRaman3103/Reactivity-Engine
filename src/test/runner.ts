@@ -88,8 +88,9 @@ async function runStep(step: Step, speed: number) {
   switch (step.type) {
 
     case 'click': {
-      const el = document.querySelector(step.selector)
-      if (!el) throw new Error(`Element not found: ${step.selector}`)
+      const el = resolveElement(step.selector)
+      if (!el) throw new Error(`Element not found: ${formatSelector(step.selector)}`)
+      log.test_debug(`Clicked: ${el.tagName}#${el.id || 'no-id'} with text: ${el.textContent?.slice(0, 20)}`)
       moveCursorTo(el)
       await sleep(speed / 2)
       ;(el as HTMLElement).click()
@@ -97,8 +98,8 @@ async function runStep(step: Step, speed: number) {
     }
 
     case 'type': {
-      const el = document.querySelector(step.selector) as HTMLInputElement
-      if (!el) throw new Error(`Element not found: ${step.selector}`)
+      const el = resolveElement(step.selector) as HTMLInputElement
+      if (!el) throw new Error(`Element not found: ${formatSelector(step.selector)}`)
       moveCursorTo(el)
       el.focus()
       for (const char of step.text) {
@@ -106,6 +107,21 @@ async function runStep(step: Step, speed: number) {
         el.dispatchEvent(new Event('input', { bubbles: true }))
         await sleep(speed / step.text.length)
       }
+      break
+    }
+
+    case 'hover': {
+      const el = resolveElement(step.selector)
+      if (!el) throw new Error(`Element not found: ${formatSelector(step.selector)}`)
+      moveCursorTo(el)
+      el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }))
+      break
+    }
+
+    case 'focus': {
+      const el = resolveElement(step.selector) as HTMLElement
+      if (!el) throw new Error(`Element not found: ${formatSelector(step.selector)}`)
+      el.focus()
       break
     }
 
@@ -123,34 +139,55 @@ async function runStep(step: Step, speed: number) {
 
     case 'expect': {
       const { actual, matcher, expected } = step
-      const value = typeof actual === 'function' ? actual() : actual
+      let value = typeof actual === 'function' ? actual() : actual
+      
+      // If the matcher is 'contains' and we passed a selector, 
+      // automatically resolve the element's text content.
+      if (matcher === 'contains' && typeof value === 'string' && (value.startsWith('#') || value.startsWith('.'))) {
+        const el = resolveElement(value)
+        value = el?.textContent?.trim() || ""
+      }
 
       if (matcher === 'is' && value !== expected) {
-        throw new Error(
-          `Expected ${JSON.stringify(value)} to be ${JSON.stringify(expected)}`
-        )
+        throw new Error(`Expected ${JSON.stringify(value)} to be ${JSON.stringify(expected)}`)
       }
       if (matcher === 'isNot' && value === expected) {
-        throw new Error(
-          `Expected ${JSON.stringify(value)} not to be ${JSON.stringify(expected)}`
-        )
+        throw new Error(`Expected ${JSON.stringify(value)} not to be ${JSON.stringify(expected)}`)
+      }
+      if (matcher === 'visible') {
+        const el = resolveElement(value) as HTMLElement
+        if (!el) throw new Error(`Expected element to be visible`)
+        
+        const style = window.getComputedStyle(el)
+        const isVisible = style.display !== 'none' && 
+                        style.visibility !== 'hidden' && 
+                        style.opacity !== '0' &&
+                        el.getClientRects().length > 0
+
+        if (!isVisible) {
+          throw new Error(`Expected element to be visible`)
+        }
+      }
+      if (matcher === 'class') {
+        const el = resolveElement(value)
+        if (!el || !el.classList.contains(expected)) {
+          throw new Error(`Expected element to have class "${expected}"`)
+        }
       }
       if (matcher === 'contains' && !String(value).includes(String(expected))) {
-        throw new Error(
-          `Expected ${JSON.stringify(value)} to contain ${JSON.stringify(expected)}`
-        )
+        throw new Error(`Expected ${JSON.stringify(value)} to contain ${JSON.stringify(expected)}`)
       }
       break
     }
 
     case 'see': {
-      const el      = document.querySelector(step.selector)
+      const el      = resolveElement(step.selector)
       const exists  = step.exists ?? true
       if (exists && !el) {
-        throw new Error(`Expected ${step.selector} to exist`)
+        throw new Error(`Expected ${formatSelector(step.selector)} to exist`)
       }
       if (!exists && el) {
-        throw new Error(`Expected ${step.selector} not to exist`)
+        throw new Error(`Expected ${formatSelector(step.selector)} not to exist`)
       }
       break
     }
@@ -165,6 +202,60 @@ async function runStep(step: Step, speed: number) {
       break
     }
   }
+}
+
+function resolveElement(selector: any): Element | null {
+  if (typeof selector === 'string') {
+    return document.querySelector(selector)
+  }
+
+  const { type, value, roleType } = selector
+  
+  if (type === 'id') {
+    return document.getElementById(value)
+  }
+
+  if (type === 'text') {
+    const items = Array.from(document.querySelectorAll('button, a, span, p, h1, h2, h3, h4, div, li, label'))
+    let bestMatch: Element | null = null
+    let smallestSize = Infinity
+
+    for (const el of items) {
+      if (el.closest('#engine-test-overlay')) continue
+      
+      const text = el.textContent?.trim() || ""
+      if (text.includes(value)) {
+        // We want the element with the shortest text content that still matches
+        // This usually means it's the most specific element (e.g. the button, not the body)
+        if (text.length < smallestSize) {
+          smallestSize = text.length
+          bestMatch = el
+        }
+      }
+    }
+    
+    if (bestMatch) {
+      log.test_debug(`Matched deepest element: ${bestMatch.tagName}#${bestMatch.id || 'no-id'} with text: "${bestMatch.textContent?.trim().slice(0, 30)}"`)
+      return bestMatch
+    }
+  }
+
+  if (type === 'role') {
+    // Basic role/text combination search
+    const els = document.querySelectorAll(`[role="${roleType}"], ${roleType}`)
+    for (const el of els) {
+      if (el.textContent?.includes(value)) return el
+    }
+  }
+
+  return null
+}
+
+function formatSelector(selector: any): string {
+  if (typeof selector === 'string') return selector
+  if (selector.type === 'text') return `text("${selector.value}")`
+  if (selector.type === 'role') return `role("${selector.roleType}", "${selector.value}")`
+  return selector.value
 }
 
 function sleep(ms: number) {

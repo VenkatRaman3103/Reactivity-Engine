@@ -36,6 +36,10 @@ export function toggleModal() {
 }
 export function toggleTheme() {
   theme = theme === 'light' ? 'dark' : 'light'
+  log.theme_debug(`Theme toggled to: ${theme}`)
+}
+export function setTheme(val: 'light' | 'dark') {
+  theme = val
 }
 
 export let logsCount = 0
