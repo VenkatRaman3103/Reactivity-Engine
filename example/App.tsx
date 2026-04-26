@@ -1,5 +1,6 @@
 import Button from "./Button";
 import KitchenSink from "./KitchenSink";
+import BindingDemo from "./BindingDemo";
 import { runDemoTest } from "./demo.test";
 import { runKitchenSinkSuite } from "./kitchen-sink.test";
 import { runStressTest } from "./stress.test";
@@ -30,6 +31,17 @@ export default function App() {
       
       <div style={{ borderTop: '2px solid #eee', paddingTop: '40px' }}>
         <KitchenSink />
+      </div>
+
+      {/* Two-Way Binding Demo */}
+      <div style={{ borderTop: '2px solid #eee', paddingTop: '40px', marginTop: '40px' }}>
+        <div style={{ marginBottom: '32px' }}>
+          <h2 style={{ margin: '0 0 6px', fontSize: '20px', color: '#111' }}>Two-Way Binding</h2>
+          <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+            Compiler-powered <code style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>bind:*</code> directives — no manual event handlers.
+          </p>
+        </div>
+        <BindingDemo />
       </div>
     </div>
   );

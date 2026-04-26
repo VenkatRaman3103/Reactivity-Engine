@@ -3,6 +3,7 @@ import { transformState } from "./transform-state";
 import { transformJSX } from "./transform-jsx";
 import { transformStateFile } from "./transform-state-file";
 import { transformWhenConditions } from "./transform-when";
+import { transformBind } from "./transform-bind";
 import { resolve, isAbsolute } from "path";
 import { fileURLToPath } from "url";
 
@@ -131,6 +132,15 @@ export function engine(): Plugin {
           const step0Code = transformWhenConditions(transformedCode);
           if (step0Code !== transformedCode) {
             transformedCode = step0Code;
+            anyChanges = true;
+          }
+        }
+
+        // step 0.5 — transform bind:* directives (before Babel sees the colons)
+        if (isTSX || isLayout) {
+          const bindCode = transformBind(transformedCode);
+          if (bindCode !== transformedCode) {
+            transformedCode = bindCode;
             anyChanges = true;
           }
         }
