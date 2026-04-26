@@ -1,5 +1,6 @@
 import { suites, Step, clearSnapshots, setViewport, resetViewport }      from './test/index'
 import { play }             from './test/runner'
+import { computeSideBySideDiff, renderSideBySide } from './test/diff'
 
 // @ts-ignore
 const isDev = import.meta.env.DEV
@@ -11,6 +12,9 @@ const MAX_HISTORY = 50
 // --- Coverage State ---
 const touchedKeys = new Set<string>()
 const collapsedFiles = new Set<string>()
+
+// --- Diff State ---
+const expandedDiffs = new Set<string>()
 
 // --- Recorder State ---
 let isRecording = false
@@ -146,14 +150,56 @@ function updateTestUI(suiteName: string, testName: string, status: any) {
   const stepElems = uiCache.stepNodes.get(key)
   if (stepElems) {
     stepElems.forEach((el, i) => {
+      // Clear previous diffs in this element if it was just rerendered or reset
+      const existingDiff = el.querySelector('.dt-inline-diff')
+      if (existingDiff) existingDiff.remove()
+      const existingBtn = el.querySelector('.dt-diff-btn')
+      if (existingBtn) existingBtn.remove()
+
       el.className = 'dt-step-item'
       if (status.running && status.activeStep === i) el.classList.add('active')
-      else if (status.passed === false && i === status.activeStep) el.classList.add('failed')
+      else if (status.passed === false && i === status.activeStep) {
+        el.classList.add('failed')
+        if (status.diff) {
+          const btn = document.createElement('button')
+          btn.className = 'dt-diff-btn'
+          btn.textContent = expandedDiffs.has(`${key}:${i}`) ? 'HIDE DIFF' : 'VIEW DIFF'
+          btn.onclick = () => toggleInlineDiff(el, status.diff, `${key}:${i}`, btn)
+          el.appendChild(btn)
+          
+          if (expandedDiffs.has(`${key}:${i}`)) {
+            renderInlineDiff(el, status.diff)
+          }
+        }
+      }
       else if (status.passed === true || (status.running && i < status.activeStep)) el.classList.add('passed')
     })
   }
 
   if (!status.running) syncCoverageUI()
+}
+
+function toggleInlineDiff(parent: HTMLElement, diffData: any, diffKey: string, btn: HTMLButtonElement) {
+  if (expandedDiffs.has(diffKey)) {
+    expandedDiffs.delete(diffKey)
+    parent.querySelector('.dt-inline-diff')?.remove()
+    btn.textContent = 'VIEW DIFF'
+  } else {
+    expandedDiffs.add(diffKey)
+    renderInlineDiff(parent, diffData)
+    btn.textContent = 'HIDE DIFF'
+  }
+}
+
+function renderInlineDiff(parent: HTMLElement, diffData: any) {
+  const container = document.createElement('div')
+  container.className = 'dt-inline-diff'
+  
+  const pairs = computeSideBySideDiff(diffData.expected, diffData.actual)
+  const rendered = renderSideBySide(pairs)
+  
+  container.innerHTML = rendered
+  parent.appendChild(container)
 }
 
 function syncStateUI() {
@@ -265,6 +311,11 @@ const panelStyles = `
   .dt-record-btn { background: #ff5f56; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 10px; font-weight: 900; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
   .dt-record-btn.active { background: #000; color: #ff5f56; border: 1px solid #ff5f56; animation: dt-blink 1s infinite; }
   .dt-record-btn i { width: 8px; height: 8px; background: currentColor; border-radius: 50%; }
+  
+  .dt-diff-btn { background: #222; border: 1px solid #333; color: #7ec8e3; font-size: 8px; padding: 2px 6px; border-radius: 3px; font-weight: 900; margin-left:10px; cursor:pointer; }
+  .dt-diff-btn:hover { background: #333; }
+  
+  .dt-inline-diff { margin-top: 8px; border: 1px solid #222; border-radius: 6px; overflow: hidden; width: 100%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
 
   .dt-suite { background: rgba(255,255,255,0.01); border-radius: 12px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden; }
   .dt-suite-head { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); }
@@ -279,7 +330,7 @@ const panelStyles = `
   .dt-test-status.failed { color: #ff5f56; }
   
   .dt-step-list { padding: 8px 0 10px 38px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid rgba(255,255,255,0.03); margin-left: 22px; }
-  .dt-step-item { font-size: 11px; color: #444; display: flex; gap: 10px; align-items: center; }
+  .dt-step-item { font-size: 11px; color: #444; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .dt-step-item.active { color: #7ec8e3 !important; font-weight: 800; transform: translateX(2px); transition: all 0.2s; }
   .dt-step-item.passed { color: #4eca8b; opacity: 0.8; }
   .dt-step-item.failed { color: #ff5f56; font-weight: 800; }

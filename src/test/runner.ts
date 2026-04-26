@@ -82,13 +82,19 @@ async function runStandalone(name: string, steps: Step[], options: PlayOptions) 
       results.push({ step, passed: true, time: performance.now() - stepStart })
       overlay?.setResult(i, true)
     } catch (e: any) {
-      results.push({ step, passed: false, error: e.message, time: performance.now() - stepStart })
+      results.push({ step, passed: false, error: e.message, diff: e.diff, time: performance.now() - stepStart } as any)
       overlay?.setResult(i, false, e.message)
       
       if (options.devToolsReporter) {
         const suiteName = name.split(' > ')[0]
         const testName = name.split(' > ')[1]
-        ;(window as any).__engine?.updateTestStatus?.(suiteName, testName, { running: false, passed: false, activeStep: i, error: e.message })
+        ;(window as any).__engine?.updateTestStatus?.(suiteName, testName, { 
+          running: false, 
+          passed: false, 
+          activeStep: i, 
+          error: e.message,
+          diff: e.diff
+        })
       }
       break
     }
@@ -130,11 +136,13 @@ async function runSuite(suite: SuiteDefinition, options: PlayOptions = {}) {
     suiteResults.push(result)
     
     // Signal result to DevTools (only if not already handled by standalone failure)
+    const failedResult = result.results.find(r => !r.passed) as any
     engine?.updateTestStatus?.(suite.name, t.name, { 
       running: false, 
       passed: result.passed,
       activeStep: result.passed ? t.steps.length : result.results.length - 1,
-      error: result.results.find(r => !r.passed)?.error 
+      error: failedResult?.error,
+      diff: failedResult?.diff
     })
 
     if (!result.passed) break
@@ -258,7 +266,11 @@ async function runStep(step: Step, speed: number, context: { suiteName: string, 
             }
 
             const diff = compareSnapshots(html, existing)
-            if (diff) throw new Error(`Snapshot mismatch! ${diff}`)
+            if (diff) {
+              const err = new Error(diff.error)
+              ;(err as any).diff = diff
+              throw err
+            }
             return
           }
 

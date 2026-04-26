@@ -22,26 +22,25 @@ export function clearSnapshots() {
  * Compares two HTML strings and returns a diff description if they differ.
  * Very simple version for now, focusing on structural equality.
  */
-export function compareSnapshots(actual: string, expected: string): string | null {
+export function compareSnapshots(actual: string, expected: string): { error: string, actual: string, expected: string } | null {
   const cleanActual = cleanHTML(actual)
   const cleanExpected = cleanHTML(expected)
 
   if (cleanActual === cleanExpected) return null
 
-  // Find the first point of difference for the error message
-  let i = 0
-  while (i < cleanActual.length && cleanActual[i] === cleanExpected[i]) i++
-  
-  const context = 20
-  const diffPart = cleanActual.substring(Math.max(0, i - context), i + context)
-  
-  return `Structural mismatch at char ${i}. \nPreview: ...${diffPart}...`
+  return { 
+    error: `Structural mismatch detected.`,
+    actual: cleanActual,
+    expected: cleanExpected
+  }
 }
 
 function cleanHTML(html: string): string {
   return html
+    .replace(/<!---->/g, '')            // Strip internal anchor comments
+    .replace(/<!--[\s\S]*?-->/g, '')    // Strip any other HTML comments
     .replace(/\s+/g, ' ')               // Collapse whitespace
     .replace(/v-[\w\d]+/g, '')          // Strip internal engine IDs
-    .replace(/id="[^"]*"/g, 'id=""')    // Optional: could be too aggressive? Let's keep for now.
+    .replace(/id="[^"]*"/g, 'id=""')    // Standardize IDs for structural check
     .trim()
 }
