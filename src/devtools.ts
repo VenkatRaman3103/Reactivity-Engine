@@ -309,6 +309,7 @@ function describeStep(step: Step): string {
     }
     case 'see':     return `see ${formatSelector(step.selector)} ${step.exists ? 'exists' : 'absent'}`
     case 'mock':    return `mock "${(step as any).url instanceof RegExp ? (step as any).url.source : (step as any).url}"`
+    case 'viewport': return `viewport ${step.width}x${step.height}`
     default:        return step.type
   }
 }

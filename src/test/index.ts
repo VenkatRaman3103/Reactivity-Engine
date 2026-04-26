@@ -11,6 +11,7 @@ export type Step =
   | { type: 'pause',   ms: number }
   | { type: 'hover',   selector: Selector }
   | { type: 'focus',   selector: Selector }
+  | { type: 'viewport', width: number, height: number }
   | { type: 'mock',    url: string | RegExp, expected: any, status?: number, delay?: number }
 
 export const find = {
@@ -73,6 +74,11 @@ export function pause(ms: number): Step {
 
 export { clearMocks } from './network'
 export { clearSnapshots } from './snapshots'
+export { setViewport, resetViewport } from './viewport'
+
+export function viewport(width: number, height: number): Step {
+  return { type: 'viewport', width, height }
+}
 
 export function mock(url: string | RegExp, response: any): any {
   const m: any = {

@@ -43,7 +43,7 @@ export default function KitchenSink() {
       <h1>Venkat</h1>
       
       {/* Counter Section */}
-      <div class={cardStyle}>
+      <div id="counter-card" class={cardStyle}>
         <h2>Counter</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <button id="counter-dec" class={buttonStyle} onClick={decrement}>-</button>

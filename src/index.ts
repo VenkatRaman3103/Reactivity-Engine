@@ -8,6 +8,7 @@ export * from "./ref";
 export * from "./scheduler";
 export * from "./state";
 export * from "./layout";
+export * from "./test/index";
 export { whenever, when } from "./when";
 export { Mount, Unmount, Err, type ErrObject } from "./lifecycle";
 export {
@@ -49,7 +50,8 @@ if (import.meta.env.DEV) {
     import('../example/kitchen-sink.test'),
     import('../example/advanced.test'),
     import('../example/network.test'),
-    import('../example/snapshot.test')
+    import('../example/snapshot.test'),
+    import('../example/viewport.test')
   ])
 }
 

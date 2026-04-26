@@ -1,6 +1,7 @@
-import { Step, SuiteDefinition, TestDefinition, suites, clearMocks } from './index'
+import { Step, SuiteDefinition, TestDefinition, suites, clearMocks, resetViewport } from './index'
 import { mock as registerMockInternally } from './network'
 import { getSnapshot, saveSnapshot, compareSnapshots } from './snapshots'
+import { setViewport } from './viewport'
 import { log }  from '../log'
 import { moveCursorTo, clickRipple, removeCursor } from './cursor'
 import { showTestOverlay } from './overlay'
@@ -50,9 +51,10 @@ export async function play(
       if (!matchedSuite) throw new Error(`Suite "${target}" not found`)
       return await runSuite(matchedSuite, steps as any || options)
     }
-  } finally {
-    isRunning = false
-  }
+    } finally {
+      resetViewport()
+      isRunning = false
+    }
 }
 
 async function runStandalone(name: string, steps: Step[], options: PlayOptions) {
@@ -235,8 +237,10 @@ async function runStep(step: Step, speed: number, context: { suiteName: string, 
 
           if (matcher === 'visible') {
             const el = resolveElement(value) as HTMLElement
-            if (el && isElementVisible(el)) return
-            throw new Error(`Expected element to be visible`)
+            // If it's missing, let the loop retry
+            if (!el) throw new Error(`Target not found for visibility check: ${value}`)
+            if (isElementVisible(el)) return
+            throw new Error(`Expected element to be visible: ${value}`)
           }
 
           if (matcher === 'snapshot') {
@@ -297,6 +301,12 @@ async function runStep(step: Step, speed: number, context: { suiteName: string, 
 
     case 'log': {
       log[step.channel](step.value)
+      break
+    }
+
+    case 'viewport': {
+      setViewport(step.width, step.height)
+      await sleep(600) // Wait for transition
       break
     }
 
