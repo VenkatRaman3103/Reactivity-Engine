@@ -1,8 +1,8 @@
 
 import { 
-  count, todos, inputValue, isModalOpen, theme, items,
+  count, todos, inputValue, isModalOpen, theme, items, externalTodo, isFetching,
   increment, decrement, addTodo, toggleTodo, removeTodo, setInput, toggleModal, toggleTheme,
-  bulkAdd, clearItems
+  bulkAdd, clearItems, fetchUsers
 } from './kitchen-sink.state'
 import { log, format } from '@engine'
 import { style } from '@engine/style'
@@ -119,6 +119,23 @@ export default function KitchenSink() {
           {items.map(i => (
             <div style={{ width: '4px', height: '4px', background: '#7ec8e3' }} />
           ))}
+        </div>
+      </div>
+
+      {/* Network Test Section */}
+      <div class={cardStyle}>
+        <h2>Network & Async</h2>
+        <button id="fetch-users" class={buttonStyle} onClick={fetchUsers} disabled={isFetching}>
+          {isFetching ? 'Fetching...' : 'Fetch External Todo'}
+        </button>
+        <div id="external-todo-result" style={{ marginTop: '16px' }}>
+          {externalTodo && (
+            <div style={{ padding: '12px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', borderLeft: '4px solid #7ec8e3' }}>
+              <strong>Title:</strong> {externalTodo.title}<br/>
+              <strong>Completed:</strong> <span id="ext-todo-status">{externalTodo.completed ? '✅ Yes' : '❌ No'}</span>
+            </div>
+          )}
+          {!externalTodo && !isFetching && <p style={{ color: '#888' }}>No data loaded.</p>}
         </div>
       </div>
 

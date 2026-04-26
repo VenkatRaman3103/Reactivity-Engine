@@ -11,6 +11,7 @@ export type Step =
   | { type: 'pause',   ms: number }
   | { type: 'hover',   selector: Selector }
   | { type: 'focus',   selector: Selector }
+  | { type: 'mock',    url: string | RegExp, response: any, status?: number, delay?: number }
 
 export const find = {
   text:  (value: string): Selector => ({ type: 'text', value }),
@@ -66,6 +67,27 @@ export function expect(actual: any): {
 
 export function pause(ms: number): Step {
   return { type: 'pause', ms }
+}
+
+export { clearMocks } from './network'
+
+export function mock(url: string | RegExp, response: any): any {
+  const m: any = {
+    type: 'mock',
+    url,
+    expected: response,
+    _status: 200,
+    _delay: 0,
+    _once: false,
+    _times: -1
+  }
+
+  m.delay  = (ms: number) => { m._delay = ms; return m }
+  m.status = (code: number) => { m._status = code; return m }
+  m.once   = () => { m._once = true; m._times = 1; return m }
+  m.times  = (n: number) => { m._times = n; return m }
+
+  return m
 }
 
 // --- New Suite & Hook Support ---

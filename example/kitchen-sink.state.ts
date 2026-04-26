@@ -9,6 +9,8 @@ export let todos = [
 export let inputValue = ''
 export let isModalOpen = false
 export let theme: 'light' | 'dark' = 'light'
+export let externalTodo: any = null
+export let isFetching = false
 
 export function increment() { count++ }
 export function decrement() { count-- }
@@ -42,6 +44,18 @@ export function setTheme(val: 'light' | 'dark') {
   theme = val
 }
 
+export async function fetchUsers() {
+  isFetching = true
+  try {
+    const res = await fetch('https://jsonplaceholder.typicode.com/todos/1')
+    externalTodo = await res.json()
+  } catch (e) {
+    log.error('Failed to fetch external todo')
+  } finally {
+    isFetching = false
+  }
+}
+
 export let logsCount = 0
 export let items: number[] = []
 
@@ -73,4 +87,6 @@ export function resetState() {
   theme = 'light'
   items = []
   logsCount = 0
+  externalTodo = null
+  isFetching = false
 }

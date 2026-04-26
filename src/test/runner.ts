@@ -1,4 +1,5 @@
-import { Step, SuiteDefinition, TestDefinition, suites } from './index'
+import { Step, SuiteDefinition, TestDefinition, suites, clearMocks } from './index'
+import { mock as registerMockInternally } from './network'
 import { log }  from '../log'
 import { moveCursorTo, clickRipple, removeCursor } from './cursor'
 import { showTestOverlay } from './overlay'
@@ -108,6 +109,9 @@ async function runSuite(suite: SuiteDefinition, options: PlayOptions = {}) {
   const engine = (window as any).__engine
 
   for (const t of suite.tests) {
+    // Clear mocks from previous tests to ensure isolation
+    clearMocks()
+
     // Signal start to DevTools
     engine?.updateTestStatus?.(suite.name, t.name, { running: true })
 
@@ -271,6 +275,15 @@ async function runStep(step: Step, speed: number) {
 
     case 'log': {
       log[step.channel](step.value)
+      break
+    }
+
+    case 'mock': {
+      // Lazy-apply the mock configuration during execution
+      const m = registerMockInternally(step.url, step.expected)
+      if ((step as any)._delay)  m.delay((step as any)._delay)
+      if ((step as any)._status) m.status((step as any)._status)
+      if ((step as any)._times)  m.times((step as any)._times)
       break
     }
   }

@@ -36,7 +36,7 @@ export { log } from "./log";
 export { play } from "./test/runner";
 export { 
   click, type, wait, expect, see, pause, find,
-  suite, test, beforeEach
+  suite, test, beforeEach, mock
 } from "./test/index";
 export * from "./utils/index";
 
@@ -47,7 +47,8 @@ if (import.meta.env.DEV) {
     // Register example suites
     import('../example/demo.test'),
     import('../example/kitchen-sink.test'),
-    import('../example/advanced.test')
+    import('../example/advanced.test'),
+    import('../example/network.test')
   ])
 }
 
