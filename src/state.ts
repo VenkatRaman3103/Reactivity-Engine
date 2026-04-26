@@ -120,7 +120,6 @@ export function wrapState<T extends Record<string, any>>(
 
       Object.defineProperty(wrapped, key, {
         get() {
-          // warn if value is undefined and probably not initialised
           if (signal.value === undefined) {
             engineWarn({
               category: "State",
@@ -140,9 +139,6 @@ export function wrapState<T extends Record<string, any>>(
             return wrapObject(file, key, val);
           }
           return val;
-        },
-        set(v) {
-          signal.value = v;
         },
         enumerable: true,
         configurable: true,
