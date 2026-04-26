@@ -1,27 +1,32 @@
 
-import { play, click, find, expect, see, pause, wait } from '@engine'
-import { isModalOpen, theme, setTheme } from './kitchen-sink.state'
+import { play, click, find, expect, see, pause } from '@engine'
+import { theme, setTheme } from './kitchen-sink.state'
 
 export function runAdvancedTest() {
   setTheme('light')
+  
   play('Advanced Testing Features', [
-    // 1. Hover & Focus test
-    click(find.text('Switch to Dark Mode')),
-    wait(() => theme === 'dark', 2000),
-    pause(500),
+    click(find.text('Venkat')),
 
-    // 2. Test text-based selection
+    // 1. Interaction (Auto-waits for element)
+    click(find.text('Switch to Dark Mode')),
+    
+    // 2. State Assertion (Auto-polls for value)
+    expect(() => theme).is('dark'),
+
+    // 3. Complex Selection
     click(find.text('Open DevTools-style Modal')),
     
-    // 3. Wait for DOM to catch up then check visibility
-    wait(() => !!document.getElementById('modal-overlay'), 3000),
+    // 4. Visibility (Auto-polls until visible)
     expect('#modal-overlay').toBeVisible(),
     
-    // 4. Role-based selection
+    // 5. Native Roles
     click(find.role('button', 'Close')),
+    
+    // 6. Absence Check (Auto-waits for removal)
     see('#modal-overlay').absent(),
 
-    // 5. Text selection for bulk add
+    // 7. Content check
     click(find.text('Add 111 Items')),
     expect('#items-count').contains('111'),
     

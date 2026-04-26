@@ -85,48 +85,47 @@ export async function play(
 }
 
 async function runStep(step: Step, speed: number) {
+  const AUTO_TIMEOUT = 5000
+
   switch (step.type) {
 
     case 'click': {
-      const el = resolveElement(step.selector)
-      if (!el) throw new Error(`Element not found: ${formatSelector(step.selector)}`)
-      log.test_debug(`Clicked: ${el.tagName}#${el.id || 'no-id'} with text: ${el.textContent?.slice(0, 20)}`)
+      const el = await waitForElement(step.selector, AUTO_TIMEOUT)
       moveCursorTo(el)
       await sleep(speed / 2)
       ;(el as HTMLElement).click()
+      await settle()
       break
     }
 
     case 'type': {
-      const el = resolveElement(step.selector) as HTMLInputElement
-      if (!el) throw new Error(`Element not found: ${formatSelector(step.selector)}`)
+      const el = await waitForElement(step.selector, AUTO_TIMEOUT) as HTMLInputElement
       moveCursorTo(el)
       el.focus()
       for (const char of step.text) {
         el.value += char
         el.dispatchEvent(new Event('input', { bubbles: true }))
-        await sleep(speed / step.text.length)
+        await sleep(speed / 10)
       }
+      await settle()
       break
     }
 
     case 'hover': {
-      const el = resolveElement(step.selector)
-      if (!el) throw new Error(`Element not found: ${formatSelector(step.selector)}`)
+      const el = await waitForElement(step.selector, AUTO_TIMEOUT)
       moveCursorTo(el)
       el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }))
       break
     }
 
     case 'focus': {
-      const el = resolveElement(step.selector) as HTMLElement
-      if (!el) throw new Error(`Element not found: ${formatSelector(step.selector)}`)
+      const el = await waitForElement(step.selector, AUTO_TIMEOUT) as HTMLElement
       el.focus()
       break
     }
 
     case 'wait': {
-      const timeout = step.timeout ?? 3000
+      const timeout = step.timeout ?? AUTO_TIMEOUT
       const start   = Date.now()
       while (!step.condition()) {
         if (Date.now() - start > timeout) {
@@ -139,57 +138,63 @@ async function runStep(step: Step, speed: number) {
 
     case 'expect': {
       const { actual, matcher, expected } = step
-      let value = typeof actual === 'function' ? actual() : actual
+      const start = Date.now()
       
-      // If the matcher is 'contains' and we passed a selector, 
-      // automatically resolve the element's text content.
-      if (matcher === 'contains' && typeof value === 'string' && (value.startsWith('#') || value.startsWith('.'))) {
-        const el = resolveElement(value)
-        value = el?.textContent?.trim() || ""
-      }
+      while (Date.now() - start < AUTO_TIMEOUT) {
+        try {
+          let value = typeof actual === 'function' ? actual() : actual
+          
+          if (matcher === 'contains' && typeof value === 'string' && (value.startsWith('#') || value.startsWith('.'))) {
+            const el = resolveElement(value)
+            value = el?.textContent?.trim() || ""
+          }
 
-      if (matcher === 'is' && value !== expected) {
-        throw new Error(`Expected ${JSON.stringify(value)} to be ${JSON.stringify(expected)}`)
-      }
-      if (matcher === 'isNot' && value === expected) {
-        throw new Error(`Expected ${JSON.stringify(value)} not to be ${JSON.stringify(expected)}`)
-      }
-      if (matcher === 'visible') {
-        const el = resolveElement(value) as HTMLElement
-        if (!el) throw new Error(`Expected element to be visible`)
-        
-        const style = window.getComputedStyle(el)
-        const isVisible = style.display !== 'none' && 
-                        style.visibility !== 'hidden' && 
-                        style.opacity !== '0' &&
-                        el.getClientRects().length > 0
+          if (matcher === 'is') {
+            if (value === expected) return
+            throw new Error(`Expected ${JSON.stringify(value)} to be ${JSON.stringify(expected)}`)
+          }
+          
+          if (matcher === 'isNot') {
+            if (value !== expected) return
+            throw new Error(`Expected ${JSON.stringify(value)} not to be ${JSON.stringify(expected)}`)
+          }
 
-        if (!isVisible) {
-          throw new Error(`Expected element to be visible`)
+          if (matcher === 'visible') {
+            const el = resolveElement(value) as HTMLElement
+            if (el && isElementVisible(el)) return
+            throw new Error(`Expected element to be visible`)
+          }
+
+          if (matcher === 'class') {
+            const el = resolveElement(value)
+            if (el && el.classList.contains(expected)) return
+            throw new Error(`Expected element to have class "${expected}"`)
+          }
+
+          if (matcher === 'contains') {
+            if (String(value).includes(String(expected))) return
+            throw new Error(`Expected ${JSON.stringify(value)} to contain ${JSON.stringify(expected)}`)
+          }
+        } catch (e) {
+          if (Date.now() - start > AUTO_TIMEOUT - 200) throw e
         }
-      }
-      if (matcher === 'class') {
-        const el = resolveElement(value)
-        if (!el || !el.classList.contains(expected)) {
-          throw new Error(`Expected element to have class "${expected}"`)
-        }
-      }
-      if (matcher === 'contains' && !String(value).includes(String(expected))) {
-        throw new Error(`Expected ${JSON.stringify(value)} to contain ${JSON.stringify(expected)}`)
+        await sleep(100)
       }
       break
     }
 
     case 'see': {
-      const el      = resolveElement(step.selector)
-      const exists  = step.exists ?? true
-      if (exists && !el) {
-        throw new Error(`Expected ${formatSelector(step.selector)} to exist`)
+      const exists = step.exists ?? true
+      const start  = Date.now()
+      
+      while (Date.now() - start < AUTO_TIMEOUT) {
+        const el = resolveElement(step.selector)
+        if (exists && el) return
+        if (!exists && !el) return
+        await sleep(100)
       }
-      if (!exists && el) {
-        throw new Error(`Expected ${formatSelector(step.selector)} not to exist`)
-      }
-      break
+      
+      throw new Error(`Expected ${formatSelector(step.selector)} to ${exists ? 'exist' : 'be absent'}`)
     }
 
     case 'pause': {
@@ -256,6 +261,31 @@ function formatSelector(selector: any): string {
   if (selector.type === 'text') return `text("${selector.value}")`
   if (selector.type === 'role') return `role("${selector.roleType}", "${selector.value}")`
   return selector.value
+}
+
+async function waitForElement(selector: any, timeout: number): Promise<Element> {
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    const el = resolveElement(selector)
+    if (el) return el
+    await sleep(100)
+  }
+  throw new Error(`Element not found: ${formatSelector(selector)}`)
+}
+
+function isElementVisible(el: HTMLElement): boolean {
+  const style = window.getComputedStyle(el)
+  return style.display !== 'none' && 
+         style.visibility !== 'hidden' && 
+         style.opacity !== '0' &&
+         el.getClientRects().length > 0
+}
+
+/**
+ * Wait for reactivity microtasks to settle
+ */
+async function settle() {
+  return new Promise(r => queueMicrotask(() => setTimeout(r, 0)))
 }
 
 function sleep(ms: number) {
