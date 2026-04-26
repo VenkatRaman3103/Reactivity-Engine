@@ -29,6 +29,12 @@ export class DashboardLayout extends BaseLayout {
     return <p class="welcome" style="margin-bottom: 1rem; color: #475569;">Welcome back {this.user.name}</p>
   }
 
+  Greet(){
+    return (
+      <div>Hello world</div>
+    )
+  }
+
   constructor() {
     super()  // inherits header, footer, user, loading from BaseLayout
 

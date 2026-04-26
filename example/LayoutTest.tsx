@@ -41,6 +41,81 @@ export default function LayoutTest() {
             roles updates the layout's bound properties, reflecting
             dynamically in your components!
           </div>
+          
+          <h4
+            style={{
+              color: "var(--text-main)",
+              marginBottom: "12px",
+              fontSize: "16px",
+            }}
+          >
+            Layout Class Definition
+          </h4>
+          <div class="demo-code-block">
+            <div class="demo-code-header">
+              <span>dashboard.layout.tsx</span>
+            </div>
+            <div class="demo-code-content">
+              <span class="highlight-keyword">import</span> {"{ BaseLayout }"} <span class="highlight-keyword">from</span> <span class="highlight-string">'./base.layout'</span>{"\n"}
+              <span class="highlight-keyword">import</span> {"{ effect }"} <span class="highlight-keyword">from</span> <span class="highlight-string">'@engine/index'</span>{"\n"}
+              <span class="highlight-keyword">import</span> {"{ role }"} <span class="highlight-keyword">from</span> <span class="highlight-string">'../state/layout-test.state'</span>{"\n\n"}
+              <span class="highlight-keyword">export class</span> <span class="highlight-func">DashboardLayout</span> <span class="highlight-keyword">extends</span> BaseLayout {"{"} {"\n\n"}
+              {'  '}sidebar = Sidebar{"\n"}
+              {'  '}role = <span class="highlight-string">'user'</span>{"\n\n"}
+              {'  '}Content() {"{"} {"\n"}
+              {'    '}if (this.loading) <span class="highlight-keyword">return</span> this.LoadingOverlay(){"\n"}
+              {'    '}if (!this.user) <span class="highlight-keyword">return</span> &lt;LoginPage /&gt;{"\n"}
+              {'    '}if (this.role === <span class="highlight-string">'admin'</span>) <span class="highlight-keyword">return</span> &lt;AdminDashboard /&gt;{"\n"}
+              {'    '} <span class="highlight-keyword">return</span> &lt;Dashboard user={this.user} /&gt;{"\n"}
+              {"  }"} {"\n\n"}
+              {'  '}constructor() {"{"} {"\n"}
+              {'    '}super(){"\n\n"}
+              {'    '}effect(() ={">"} {"{"} {"\n"}
+              {'      '}this.role = role{"\n"}
+              {'      '}if (role === <span class="highlight-string">'admin'</span>) {"{"} {"\n"}
+              {'        '}this.header = AdminHeader{"\n"}
+              {'        '}this.sidebar = AdminSidebar{"\n"}
+              {'      '}&nbsp;{"}"} <span class="highlight-keyword">else</span> {"{"} {"\n"}
+              {'        '}this.header = Header{"\n"}
+              {'        '}this.sidebar = Sidebar{"\n"}
+              {'      '}&nbsp;{"}"} {"\n"}
+              {"    "}&nbsp;{"}"} {"\n"}
+              {"  }"} {"\n"}
+              {"}"} {"\n\n"}
+              <span class="highlight-keyword">export const</span> dashboardLayout = <span class="highlight-keyword">new</span> DashboardLayout()
+            </div>
+          </div>
+
+          <h4
+            style={{
+              color: "var(--text-main)",
+              marginBottom: "12px",
+              fontSize: "16px",
+            }}
+          >
+            Using Layout in Components
+          </h4>
+          <div class="demo-code-block">
+            <div class="demo-code-header">
+              <span>LayoutTest.tsx</span>
+            </div>
+            <div class="demo-code-content">
+              <span class="highlight-keyword">const</span> layout = dashboardLayout{"\n\n"}
+              <span class="highlight-comment">// Access reactive layout components</span>{"\n"}
+              {"\n"}
+              <span class="highlight-comment">// Header and sidebar are reactive properties</span>{"\n"}
+              layout.header  <span class="highlight-comment">// dynamic header component</span>{"\n"}
+              layout.sidebar <span class="highlight-comment">// dynamic sidebar component</span>{"\n"}
+              <span class="highlight-comment">// Content method returns conditional JSX</span>{"\n"}
+              layout.Content()
+            </div>
+          </div>
+
+          <div class="tip-card" style={{ marginTop: "24px" }}>
+            <strong>Note:</strong> The Layout system extends from BaseLayout which provides 
+            shared properties like <code>user</code>, <code>loading</code>, <code>header</code>, 
+            <code>footer</code> that are tracked reactively across your entire application!
+          </div>
 
           <div
             class="controls"
@@ -88,6 +163,7 @@ export default function LayoutTest() {
             >
               Dashboard Layout
             </h3>
+            {dashboardLayout.Greet()}
             <div
               class="layout-demo"
               style="display: flex; flex-direction: column; min-height: 400px;"
