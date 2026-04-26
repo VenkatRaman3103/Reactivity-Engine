@@ -1,5 +1,6 @@
 import { Step, SuiteDefinition, TestDefinition, suites, clearMocks } from './index'
 import { mock as registerMockInternally } from './network'
+import { getSnapshot, saveSnapshot, compareSnapshots } from './snapshots'
 import { log }  from '../log'
 import { moveCursorTo, clickRipple, removeCursor } from './cursor'
 import { showTestOverlay } from './overlay'
@@ -73,7 +74,9 @@ async function runStandalone(name: string, steps: Step[], options: PlayOptions) 
     }
 
     try {
-      await runStep(step, speed)
+      const sName = name.split(' > ')[0]
+      const tName = name.split(' > ')[1] || 'Test'
+      await runStep(step, speed, { suiteName: sName, testName: tName, stepIndex: i })
       results.push({ step, passed: true, time: performance.now() - stepStart })
       overlay?.setResult(i, true)
     } catch (e: any) {
@@ -145,7 +148,7 @@ function speedToMs(speed: string): number {
   return 500
 }
 
-async function runStep(step: Step, speed: number) {
+async function runStep(step: Step, speed: number, context: { suiteName: string, testName: string, stepIndex: number }) {
   const AUTO_TIMEOUT = 5000
 
   switch (step.type) {
@@ -234,6 +237,25 @@ async function runStep(step: Step, speed: number) {
             const el = resolveElement(value) as HTMLElement
             if (el && isElementVisible(el)) return
             throw new Error(`Expected element to be visible`)
+          }
+
+          if (matcher === 'snapshot') {
+            const selector = String(value)
+            const el = document.querySelector(selector) as HTMLElement
+            if (!el) throw new Error(`Snapshot target not found: ${selector}`)
+            
+            const html = el.innerHTML
+            const key  = `${context.suiteName}:${context.testName}:${context.stepIndex}`
+            const existing = getSnapshot(key)
+
+            if (!existing) {
+              saveSnapshot(key, html)
+              return
+            }
+
+            const diff = compareSnapshots(html, existing)
+            if (diff) throw new Error(`Snapshot mismatch! ${diff}`)
+            return
           }
 
           if (matcher === 'class') {

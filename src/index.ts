@@ -48,7 +48,8 @@ if (import.meta.env.DEV) {
     import('../example/demo.test'),
     import('../example/kitchen-sink.test'),
     import('../example/advanced.test'),
-    import('../example/network.test')
+    import('../example/network.test'),
+    import('../example/snapshot.test')
   ])
 }
 

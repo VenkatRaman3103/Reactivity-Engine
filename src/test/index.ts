@@ -11,7 +11,7 @@ export type Step =
   | { type: 'pause',   ms: number }
   | { type: 'hover',   selector: Selector }
   | { type: 'focus',   selector: Selector }
-  | { type: 'mock',    url: string | RegExp, response: any, status?: number, delay?: number }
+  | { type: 'mock',    url: string | RegExp, expected: any, status?: number, delay?: number }
 
 export const find = {
   text:  (value: string): Selector => ({ type: 'text', value }),
@@ -55,13 +55,15 @@ export function expect(actual: any): {
   contains:     (expected: any) => Step
   toBeVisible:  () => Step
   toHaveClass:  (className: string) => Step
+  toMatchSnapshot: () => Step
 } {
   return {
     is:           (expected)  => ({ type: 'expect', actual, matcher: 'is',       expected }),
     isNot:        (expected)  => ({ type: 'expect', actual, matcher: 'isNot',    expected }),
     contains:     (expected)  => ({ type: 'expect', actual, matcher: 'contains', expected }),
     toBeVisible:  ()          => ({ type: 'expect', actual, matcher: 'visible' }),
-    toHaveClass:  (className) => ({ type: 'expect', actual, matcher: 'class',    expected: className })
+    toHaveClass:  (className) => ({ type: 'expect', actual, matcher: 'class',    expected: className }),
+    toMatchSnapshot: ()       => ({ type: 'expect', actual, matcher: 'snapshot' })
   }
 }
 
@@ -70,6 +72,7 @@ export function pause(ms: number): Step {
 }
 
 export { clearMocks } from './network'
+export { clearSnapshots } from './snapshots'
 
 export function mock(url: string | RegExp, response: any): any {
   const m: any = {

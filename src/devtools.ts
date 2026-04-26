@@ -1,4 +1,4 @@
-import { suites, Step }      from './test/index'
+import { suites, Step, clearSnapshots }      from './test/index'
 import { play }             from './test/runner'
 
 // @ts-ignore
@@ -228,7 +228,13 @@ export function toggleDevPanel() {
       <div class="dt-panel active" id="dt-state"></div>
       <div class="dt-panel" id="dt-logs"></div>
       <div class="dt-panel" id="dt-tests">
-         <div class="dt-recorder-bar"><span style="font-size:10px; font-weight:900; color:#333">AUTO-RECORDER</span><button class="dt-record-btn" id="record-btn"><i></i> RECORD</button></div>
+         <div class="dt-recorder-bar">
+            <span style="font-size:10px; font-weight:900; color:#333">AUTO-RECORDER</span>
+            <div style="display:flex; gap:8px">
+              <button class="dt-record-btn" id="clear-snapshots-btn" style="background:#333; color:#aaa"><i></i> CLEAR SNAPSHOTS</button>
+              <button class="dt-record-btn" id="record-btn"><i></i> RECORD</button>
+            </div>
+         </div>
          <div id="recorder-output" class="dt-scroll-box" style="display:none"><div style="color:#444; font-size:10px">Perform actions on the page to generate code...</div></div>
          <div id="tests-tree" style="margin-top:20px"></div>
       </div>
@@ -241,6 +247,14 @@ export function toggleDevPanel() {
   wrapperEl.appendChild(panel); document.body.appendChild(wrapperEl)
 
   panel.querySelector('.dt-close')?.addEventListener('click', toggleDevPanel)
+  
+  panel.querySelector('#clear-snapshots-btn')?.addEventListener('click', () => {
+    if (confirm('Clear all visual snapshots?')) {
+      clearSnapshots()
+      alert('Snapshots cleared!')
+    }
+  })
+
   const recordBtn = panel.querySelector('#record-btn') as HTMLElement
   recordBtn.addEventListener('click', () => {
     isRecording = !isRecording
@@ -290,6 +304,7 @@ function describeStep(step: Step): string {
       if (step.matcher === 'is') return `expect to be ${val}`
       if (step.matcher === 'contains') return `expect to contain ${val}`
       if (step.matcher === 'visible') return `expect visible`
+      if (step.matcher === 'snapshot') return `expect snapshot of ${formatSelector((step as any).actual)}`
       return `expect ${step.matcher} ${val}`
     }
     case 'see':     return `see ${formatSelector(step.selector)} ${step.exists ? 'exists' : 'absent'}`
