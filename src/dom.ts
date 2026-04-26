@@ -14,6 +14,66 @@ export type Child =
   | (() => Child)
   | any[];
 
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
+const XLINK_NAMESPACE = 'http://www.w3.org/1999/xlink'
+
+const SVG_TAGS = new Set([
+  'svg', 'circle', 'ellipse', 'line', 'path', 'polygon',
+  'polyline', 'rect', 'text', 'tspan', 'g', 'defs', 'use',
+  'symbol', 'clipPath', 'mask', 'pattern', 'image', 'foreignObject',
+  'linearGradient', 'radialGradient', 'stop', 'filter', 'feBlend',
+  'feColorMatrix', 'feComposite', 'feFlood', 'feGaussianBlur',
+  'feMerge', 'feMergeNode', 'feOffset', 'title', 'desc',
+  'animate', 'animateTransform', 'animateMotion', 'marker', 'textPath'
+])
+
+const XLINK_ATTRS = new Set([
+  'xlink:href', 'xlink:arcrole', 'xlink:role',
+  'xlink:title', 'xlink:type', 'xlink:show', 'xlink:actuate'
+])
+
+const SVG_ATTR_MAP: Record<string, string> = {
+  clipPath:          'clip-path',
+  clipRule:          'clip-rule',
+  colorInterpolation: 'color-interpolation',
+  colorRendering:    'color-rendering',
+  dominantBaseline:  'dominant-baseline',
+  fillOpacity:       'fill-opacity',
+  fillRule:          'fill-rule',
+  floodColor:        'flood-color',
+  floodOpacity:      'flood-opacity',
+  fontFamily:        'font-family',
+  fontSize:          'font-size',
+  fontStyle:         'font-style',
+  fontWeight:        'font-weight',
+  imageRendering:    'image-rendering',
+  letterSpacing:     'letter-spacing',
+  lightingColor:     'lighting-color',
+  markerEnd:         'marker-end',
+  markerMid:         'marker-mid',
+  markerStart:       'marker-start',
+  shapeRendering:    'shape-rendering',
+  stopColor:         'stop-color',
+  stopOpacity:       'stop-opacity',
+  strokeDasharray:   'stroke-dasharray',
+  strokeDashoffset:  'stroke-dashoffset',
+  strokeLinecap:     'stroke-linecap',
+  strokeLinejoin:    'stroke-linejoin',
+  strokeMiterlimit:  'stroke-miterlimit',
+  strokeOpacity:     'stroke-opacity',
+  strokeWidth:       'stroke-width',
+  textAnchor:        'text-anchor',
+  textDecoration:    'text-decoration',
+  textRendering:     'text-rendering',
+  transformOrigin:   'transform-origin',
+  unicodeBidi:       'unicode-bidi',
+  vectorEffect:      'vector-effect',
+  wordSpacing:       'word-spacing',
+  writingMode:       'writing-mode',
+}
+
+let svgDepth = 0
+
 export function h(
   tag: string | Function,
   props: Record<string, any> | null,
@@ -82,24 +142,24 @@ export function h(
     });
   }
 
-  const svgTags = new Set([
-    "svg", "path", "line", "circle", "rect", "ellipse", "polyline", "polygon", 
-    "text", "tspan", "defs", "g", "symbol", "use", "image", "clippath", "mask", "pattern"
-  ]);
-
-  const isSVG = svgTags.has(tag) || (parent instanceof Element && parent.namespaceURI === "http://www.w3.org/2000/svg");
+  const isSVG = SVG_TAGS.has(tag) || svgDepth > 0;
   const el = isSVG 
-    ? (document.createElementNS("http://www.w3.org/2000/svg", tag) as any) as HTMLElement
+    ? document.createElementNS(SVG_NAMESPACE, tag) as any as HTMLElement
     : document.createElement(tag);
+
+  if (tag === 'svg') svgDepth++;
 
   if (props) applyProps(el, props, isSVG);
   children.flat(Infinity).forEach((c) => applyChild(el, c));
+
+  if (tag === 'svg') svgDepth--;
+
   return el;
 }
 
 export const Fragment = "__fragment";
 
-function applyProps(el: HTMLElement, props: Record<string, any>, isSVG = false) {
+function applyProps(el: Element, props: Record<string, any>, isSVG = false) {
   Object.entries(props).forEach(([key, val]) => {
     if (key === "children") return;
     if (key === "key") return;
@@ -113,15 +173,20 @@ function applyProps(el: HTMLElement, props: Record<string, any>, isSVG = false) 
     if (typeof val === "function") {
       createEffect(() => {
         const v = val();
-        if (key === "class") {
-          if (isSVG) el.setAttribute("class", String(v));
-          else el.className = String(v);
-        }
-        else if (key === "style" && typeof v === "object") Object.assign(el.style, v);
-        else if (typeof v === "boolean") {
+        if (XLINK_ATTRS.has(key)) {
+          el.setAttributeNS(XLINK_NAMESPACE, key, String(v));
+        } else if (isSVG && key in SVG_ATTR_MAP) {
+          el.setAttribute(SVG_ATTR_MAP[key], String(v));
+        } else if (key === "class" || key === "className") {
+          el.setAttribute("class", String(v));
+        } else if (key === "style" && typeof v === "object") {
+          Object.assign((el as HTMLElement).style, v);
+        } else if (!isSVG && typeof v === "boolean") {
           if (v) el.setAttribute(key, "");
           else el.removeAttribute(key);
-        } else el.setAttribute(key, String(v));
+        } else {
+          el.setAttribute(key, String(v));
+        }
       });
       return;
     }
@@ -131,15 +196,33 @@ function applyProps(el: HTMLElement, props: Record<string, any>, isSVG = false) 
       return;
     }
 
-    if (key === "class") {
-      if (isSVG) el.setAttribute("class", String(val));
-      else el.className = String(val);
+    if (XLINK_ATTRS.has(key)) {
+      el.setAttributeNS(XLINK_NAMESPACE, key, String(val));
+      return;
     }
-    else if (key === "style" && typeof val === "object") Object.assign(el.style, val);
-    else if (typeof val === "boolean") {
+
+    if (isSVG && key in SVG_ATTR_MAP) {
+      el.setAttribute(SVG_ATTR_MAP[key], String(val));
+      return;
+    }
+
+    if (key === "class" || key === "className") {
+      el.setAttribute("class", String(val));
+      return;
+    }
+    
+    if (key === "style" && typeof val === "object") {
+      Object.assign((el as HTMLElement).style, val);
+      return;
+    }
+    
+    if (!isSVG && typeof val === "boolean") {
       if (val) el.setAttribute(key, "");
       else el.removeAttribute(key);
-    } else el.setAttribute(key, String(val));
+      return;
+    }
+
+    el.setAttribute(key, String(val));
   });
 }
 

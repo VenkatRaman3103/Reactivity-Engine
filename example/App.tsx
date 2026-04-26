@@ -1,5 +1,6 @@
 import Button from "./Button";
 import KitchenSink from "./KitchenSink";
+import SVGDemo from "./SVGDemo";
 import BindingDemo from "./BindingDemo";
 import { runDemoTest } from "./demo.test";
 import { runKitchenSinkSuite } from "./kitchen-sink.test";
@@ -42,6 +43,10 @@ export default function App() {
           </p>
         </div>
         <BindingDemo />
+      </div>
+
+      <div style={{ borderTop: '2px solid #eee', marginTop: '40px' }}>
+        <SVGDemo />
       </div>
     </div>
   );
