@@ -1,7 +1,7 @@
 import Button from "./Button";
 import KitchenSink from "./KitchenSink";
 import { runDemoTest } from "./demo.test";
-import { runKitchenSinkTest } from "./kitchen-sink.test";
+import { runKitchenSinkSuite } from "./kitchen-sink.test";
 import { runStressTest } from "./stress.test";
 import { runAdvancedTest } from "./advanced.test";
 import { device } from "@engine";
@@ -24,10 +24,10 @@ export default function App() {
             🔍 Run Advanced Features Test (Text/Role/Visible)
           </button>
           <button 
-            onClick={runKitchenSinkTest}
+            onClick={runKitchenSinkSuite}
             style={{ padding: '10px 20px', background: '#4eca8b', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
           >
-            ▶ Run Kitchen Sink Test
+            ▶ Run Kitchen Sink Suite
           </button>
           <button 
             onClick={runStressTest}

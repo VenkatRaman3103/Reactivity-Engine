@@ -1,7 +1,6 @@
-
-import { Step } from './index'
+import { Step, SuiteDefinition, TestDefinition, suites } from './index'
 import { log }  from '../log'
-import { moveCursorTo, clickRipple } from './cursor'
+import { moveCursorTo, clickRipple, removeCursor } from './cursor'
 import { showTestOverlay } from './overlay'
 
 export interface PlayOptions {
@@ -11,13 +10,6 @@ export interface PlayOptions {
 
 const SPEEDS = { slow: 800, normal: 400, fast: 100 }
 
-interface TestResult {
-  name:   string
-  steps:  StepResult[]
-  passed: boolean
-  time:   number
-}
-
 interface StepResult {
   step:    Step
   passed:  boolean
@@ -26,62 +18,85 @@ interface StepResult {
 }
 
 export async function play(
-  name:    string,
-  steps:   Step[],
+  target:  string | Step[],
+  steps?:  Step[],
   options: PlayOptions = {}
-): Promise<TestResult> {
-  const speed   = SPEEDS[options.speed ?? 'normal']
-  const results: StepResult[] = []
-  const start   = performance.now()
+): Promise<any> {
+  // Signature 1: play(steps, options)
+  if (Array.isArray(target)) {
+    return runStandalone('Anonymous Test', target, steps as any || options)
+  }
 
-  // show test runner overlay
+  // Signature 2: play(name, steps, options)
+  if (typeof target === 'string' && Array.isArray(steps)) {
+    return runStandalone(target, steps, options)
+  }
+
+  // Signature 3: play(suiteName, options)
+  if (typeof target === 'string') {
+    const matchedSuite = suites.find(s => s.name === target)
+    if (!matchedSuite) throw new Error(`Suite "${target}" not found`)
+    return runSuite(matchedSuite, steps as any || options)
+  }
+}
+
+async function runStandalone(name: string, steps: Step[], options: PlayOptions) {
+  const speed = SPEEDS[options.speed ?? 'normal']
   const overlay = showTestOverlay(name, steps)
+  const results: StepResult[] = []
+  const start = performance.now()
 
   for (let i = 0; i < steps.length; i++) {
-    const step      = steps[i]
+    const step = steps[i]
     const stepStart = performance.now()
-
-    // highlight current step in overlay
     overlay.setActive(i)
 
     try {
       await runStep(step, speed)
-
-      results.push({
-        step,
-        passed: true,
-        time:   performance.now() - stepStart
-      })
-
+      results.push({ step, passed: true, time: performance.now() - stepStart })
       overlay.setResult(i, true)
-
     } catch (e: any) {
-      results.push({
-        step,
-        passed: false,
-        error:  e.message,
-        time:   performance.now() - stepStart
-      })
-
+      results.push({ step, passed: false, error: e.message, time: performance.now() - stepStart })
       overlay.setResult(i, false, e.message)
-
-      // stop on first failure
       break
     }
-
     await sleep(speed)
   }
 
   const passed = results.every(r => r.passed)
-  const time   = performance.now() - start
-
+  const time = performance.now() - start
   overlay.setComplete(passed, time)
+  removeCursor()
 
   if (!options.silent) {
     log.tests({ name, passed, time, results })
   }
 
-  return { name, steps: results, passed, time }
+  return { name, passed, time, results }
+}
+
+async function runSuite(suite: SuiteDefinition, options: PlayOptions = {}) {
+  log.test_debug(`Running Suite: ${suite.name}`)
+  const suiteResults = []
+
+  for (const t of suite.tests) {
+    // Run beforeEach if it exists
+    if (suite.beforeEach) {
+      log.test_debug(`Running beforeEach for: ${t.name}`)
+      await suite.beforeEach()
+      await settle()
+    }
+
+    const result = await runStandalone(`${suite.name} > ${t.name}`, t.steps, options)
+    suiteResults.push(result)
+    
+    // If a test fails, we stop the suite? (Usually yes in E2E)
+    if (!result.passed) break
+    
+    await sleep(1000) // Small gap between tests
+  }
+  
+  return suiteResults
 }
 
 async function runStep(step: Step, speed: number) {

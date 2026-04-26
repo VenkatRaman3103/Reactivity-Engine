@@ -67,3 +67,49 @@ export function expect(actual: any): {
 export function pause(ms: number): Step {
   return { type: 'pause', ms }
 }
+
+// --- New Suite & Hook Support ---
+
+export interface TestDefinition {
+  name: string
+  steps: Step[]
+}
+
+export interface SuiteDefinition {
+  name: string
+  tests: TestDefinition[]
+  beforeEach?: () => void | Promise<void>
+}
+
+let currentSuite: SuiteDefinition | null = null
+export const suites: SuiteDefinition[] = []
+
+export function suite(name: string, fn: () => void) {
+  const outerSuite = currentSuite
+  currentSuite = { name, tests: [] }
+  fn()
+  suites.push(currentSuite)
+  currentSuite = outerSuite
+}
+
+export function test(name: string, steps: Step[]) {
+  if (!currentSuite) {
+    suite('Global Tests', () => {
+      currentSuite!.tests.push({ name, steps })
+    })
+    return
+  }
+  currentSuite.tests.push({ name, steps })
+}
+
+export function beforeEach(fn: () => void | Promise<void>) {
+  if (currentSuite) {
+    currentSuite.beforeEach = fn
+  }
+}
+
+/**
+ * Universal play function that handles both standalone steps 
+ * and registered suites by name.
+ */
+export { play } from "./runner"

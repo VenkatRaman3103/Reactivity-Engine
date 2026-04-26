@@ -60,3 +60,17 @@ export function clearItems() {
 export function incrementLogs() {
   logsCount++
 }
+
+export function resetState() {
+  count = 0
+  todos = [
+    { id: 1, text: 'Build Reactivity Engine', completed: true },
+    { id: 2, text: 'Implement Style System', completed: true },
+    { id: 3, text: 'Create Test Runner', completed: false }
+  ]
+  inputValue = ''
+  isModalOpen = false
+  theme = 'light'
+  items = []
+  logsCount = 0
+}
