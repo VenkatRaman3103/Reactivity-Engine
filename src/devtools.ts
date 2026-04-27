@@ -3,6 +3,15 @@ import { play }             from './test/runner'
 import { computeSideBySideDiff, renderSideBySide } from './test/diff'
 import { startNetworkSpy, stopNetworkSpy, CapturedRequest } from './test/network'
 import { getPersistedKeys, clearPersisted, clearAllPersisted, PersistEntry } from './persist'
+import { componentRegistry } from './reactive'
+import { instances }       from './component'
+import { stateModules }    from './memo'
+import { renderMap }       from './devtools/views/Map'
+import { renderTree }      from './devtools/views/Tree'
+import { renderInspector,
+         enableInspect,
+         disableInspect,
+         isInspecting }  from './devtools/views/Inspector'
 
 // @ts-ignore
 const isDev = import.meta.env.DEV
@@ -33,11 +42,18 @@ const uiCache = {
   coverageContainer: null as HTMLElement | null,
   recorderOutput: null as HTMLElement | null,
   networkBadge: null as HTMLElement | null,
-  storageContainer: null as HTMLElement | null
+  storageContainer: null as HTMLElement | null,
+  componentsContainer: null as HTMLElement | null
 }
 
 let wrapperEl: HTMLElement | null = null
 let activeTab: string = 'state'
+let compActiveTab: string = 'map'
+let isDragging: boolean = false
+let dragOffsetX: number = 0
+let dragOffsetY: number = 0
+let winX: number = 40
+let winY: number = 40
 
 export function registerStateFile(file: string, mod: any) {
   if (!isDev) return
@@ -336,56 +352,155 @@ function syncCoverageUI() {
 }
 
 const panelStyles = `
-  #engine-devtools-wrapper { position: fixed; bottom: 20px; right: 20px; z-index: 100005; font-family: system-ui, sans-serif; pointer-events: none; }
-  #engine-devtools { pointer-events: auto; background: #0a0a0a; border-radius: 16px; width: 450px; height: 550px; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
-  .dt-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: #000; border-bottom: 1px solid rgba(255,255,255,0.05); }
-  .dt-header span { font-size: 11px; font-weight: 800; color: #7ec8e3; letter-spacing: 1px; }
-  .dt-close { background: none; border: none; color: #444; cursor: pointer; font-size: 14px; }
+  :root {
+    --dt-font: 'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace;
+    --dt-xs: 9px;
+    --dt-sm: 10px;
+    --dt-md: 11px;
+    --dt-lg: 12px;
+    --dt-xl: 14px;
+    --dt-color-text: #ccc;
+    --dt-color-muted: #666;
+    --dt-color-accent: #7ec8e3;
+    --dt-color-success: #4eca8b;
+    --dt-color-error: #ff5f56;
+    --dt-color-bg: #0a0a0a;
+    --dt-color-bg-alt: #111;
+  }
+
+  #engine-devtools { -ms-overflow-style: none; scrollbar-width: none; }
+  #engine-devtools::-webkit-scrollbar { display: none; }
+  #engine-devtools * { -ms-overflow-style: none; scrollbar-width: none; }
+  #engine-devtools *::-webkit-scrollbar { display: none; }
+  #engine-devtools-wrapper { position: fixed; bottom: 20px; right: 20px; z-index: 100005; font-family: var(--dt-font); pointer-events: none; }
+  #engine-devtools { pointer-events: auto; background: var(--dt-color-bg); border-radius: 16px; width: 450px; height: 550px; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; font-family: var(--dt-font); }
+  #engine-devtools:active { cursor: grabbing; }
+  .dt-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; padding-top: 24px; background: #000; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: grab; }
+  .dt-header:active { cursor: grabbing; }
+  .dt-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; padding-top: 24px; background: #000; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .dt-header span { font-size: var(--dt-md); font-weight: 800; color: var(--dt-color-accent); letter-spacing: 1px; }
+  .dt-close { background: none; border: none; color: var(--dt-color-muted); cursor: pointer; font-size: var(--dt-xl); }
+  .dt-close:hover { color: #666; }
   .dt-tabs { display: flex; background: #000; padding: 0 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-  .dt-tab { background: none; border: none; padding: 12px 14px; color: #555; font-size: 10px; font-weight: 800; cursor: pointer; border-bottom: 2px solid transparent; text-transform: uppercase; }
-  .dt-tab.active { color: #7ec8e3; border-bottom-color: #7ec8e3; }
+  .dt-tab { background: none; border: none; padding: 12px 14px; color: var(--dt-color-muted); font-size: var(--dt-sm); font-weight: 800; cursor: pointer; border-bottom: 2px solid transparent; text-transform: uppercase; letter-spacing: 0.5px; }
+  .dt-tab:hover { color: #777; }
+  .dt-tab.active { color: var(--dt-color-accent); border-bottom-color: var(--dt-color-accent); }
   .dt-body { flex: 1; overflow-y: auto; padding: 12px; }
   .dt-panel { display: none; }
   .dt-panel.active { display: block; }
 
-  .dt-scroll-box { background: #000; border: 1px solid #1a1a1a; border-radius: 8px; padding: 12px; margin-top: 10px; min-height: 50px; }
+  .dt-scroll-box { background: var(--dt-color-bg-alt); border: 1px solid #1a1a1a; border-radius: 8px; padding: 12px; margin-top: 10px; min-height: 50px; }
   .dt-recorder-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 4px 0; }
-  .dt-record-btn { background: #ff5f56; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 10px; font-weight: 900; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
-  .dt-record-btn.active { background: #000; color: #ff5f56; border: 1px solid #ff5f56; animation: dt-blink 1s infinite; }
+  .dt-record-btn { background: var(--dt-color-error); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: var(--dt-sm); font-weight: 900; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+  .dt-record-btn:hover { background: #ff7061; }
+  .dt-record-btn.active { background: var(--dt-color-bg-alt); color: var(--dt-color-error); border: 1px solid var(--dt-color-error); animation: dt-blink 1s infinite; }
   .dt-record-btn i { width: 8px; height: 8px; background: currentColor; border-radius: 50%; }
-  
-  .dt-diff-btn { background: #222; border: 1px solid #333; color: #7ec8e3; font-size: 8px; padding: 2px 6px; border-radius: 3px; font-weight: 900; margin-left:10px; cursor:pointer; }
+    
+  .dt-diff-btn { background: #222; border: 1px solid #333; color: var(--dt-color-accent); font-size: var(--dt-xs); padding: 2px 6px; border-radius: 3px; font-weight: 900; margin-left:10px; cursor:pointer; }
   .dt-diff-btn:hover { background: #333; }
-  
+    
   .dt-inline-diff { margin-top: 8px; border: 1px solid #222; border-radius: 6px; overflow: hidden; width: 100%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
 
   .dt-suite { background: rgba(255,255,255,0.01); border-radius: 12px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden; }
   .dt-suite-head { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); }
-  .dt-suite-name { font-size: 11px; font-weight: 800; color: #eee; }
-  .dt-run-btn { background: #4eca8b; border: none; color: #000; font-size: 9px; font-weight: 900; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
-  
+  .dt-suite-name { font-size: var(--dt-md); font-weight: 800; color: var(--dt-color-text); }
+  .dt-run-btn { background: var(--dt-color-success); border: none; color: #000; font-size: var(--dt-sm); font-weight: 900; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+  .dt-run-btn:hover { background: #5fdc9b; }
+    
   .dt-test-node { margin-top: 2px; }
-  .dt-test-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 12px; color: #777; border-bottom: 1px solid rgba(255,255,255,0.01); }
-  .dt-test-status { width: 14px; text-align: center; font-size: 14px; }
-  .dt-test-status.running { color: #7ec8e3; animation: dt-pulse 0.8s infinite alternate; }
-  .dt-test-status.passed { color: #4eca8b; }
-  .dt-test-status.failed { color: #ff5f56; }
-  
+  .dt-test-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: var(--dt-lg); color: var(--dt-color-muted); border-bottom: 1px solid rgba(255,255,255,0.01); }
+  .dt-test-status { width: 14px; text-align: center; font-size: var(--dt-xl); }
+  .dt-test-status.running { color: var(--dt-color-accent); animation: dt-pulse 0.8s infinite alternate; }
+  .dt-test-status.passed { color: var(--dt-color-success); }
+  .dt-test-status.failed { color: var(--dt-color-error); }
+    
   .dt-step-list { padding: 8px 0 10px 38px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid rgba(255,255,255,0.03); margin-left: 22px; }
-  .dt-step-item { font-size: 11px; color: #444; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-  .dt-step-item.active { color: #7ec8e3 !important; font-weight: 800; transform: translateX(2px); transition: all 0.2s; }
-  .dt-step-item.passed { color: #4eca8b; opacity: 0.8; }
-  .dt-step-item.failed { color: #ff5f56; font-weight: 800; }
+  .dt-step-item { font-size: var(--dt-md); color: var(--dt-color-muted); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .dt-step-item.active { color: var(--dt-color-accent) !important; font-weight: 800; transform: translateX(2px); transition: all 0.2s; }
+  .dt-step-item.passed { color: var(--dt-color-success); opacity: 0.8; }
+  .dt-step-item.failed { color: var(--dt-color-error); font-weight: 800; }
   .dt-step-dot { width: 5px; height: 5px; border-radius: 50%; background: #222; }
-  
+    
   @keyframes dt-blink { from { opacity: 1; } to { opacity: 0.5; } }
   @keyframes dt-pulse { from { opacity: 0.2; transform: scale(0.8); } to { opacity: 1; transform: scale(1.1); } }
-  .dt-row { display: flex; padding: 6px 0; font-size: 11px; }
-  .dt-key { color: #7ec8e3; width: 110px; font-weight: 700; }
-  .dt-val { color: #fff; font-family: monospace; opacity: 0.7; overflow: hidden; }
-  .dt-file-header { font-size: 9px; color: #444; font-weight: 900; margin: 12px 0 4px 0; text-transform: uppercase; }
-  .dt-empty { padding: 40px; text-align: center; color: #444; font-size: 12px; }
-`;
+  .dt-row { display: flex; padding: 6px 0; font-size: var(--dt-md); }
+  .dt-key { color: var(--dt-color-accent); width: 110px; font-weight: 700; }
+  .dt-val { color: var(--dt-color-text); opacity: 0.7; overflow: hidden; }
+  .dt-file-header { font-size: var(--dt-xs); color: var(--dt-color-muted); font-weight: 900; margin: 12px 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+  .dt-empty { padding: 40px; text-align: center; color: var(--dt-color-muted); font-size: var(--dt-md); }
+  .dt-meta { opacity: 0.5; font-size: var(--dt-sm); }
+  .dt-clear { background: #222; border: none; color: var(--dt-color-error); font-size: var(--dt-xs); padding: 2px 6px; border-radius: 3px; cursor: pointer; }
+  .dt-clear:hover { background: #333; }
+  .dt-panel-title { font-size: var(--dt-sm); font-weight: 900; color: var(--dt-color-muted); margin-bottom: 12px; }
+
+  /* Components tab */
+  #dt-components { display: none; flex-direction: column; height: 100%; }
+  #dt-components.active { display: flex; }
+  #dt-components .dt-comp-header { display: none; }
+  #dt-components.active .dt-comp-header { display: flex; gap: 4px; padding: 0 8px; margin-bottom: 8px; border-bottom: 1px solid #1a1a1a; align-items: center; }
+  #dt-components .dt-comp-tab { background: none; border: none; padding: 8px 12px; color: var(--dt-color-muted); font-size: var(--dt-sm); font-weight: 800; cursor: pointer; border-bottom: 2px solid transparent; }
+  #dt-components .dt-comp-tab:hover { color: #777; }
+  #dt-components.active .dt-comp-tab.active { color: var(--dt-color-accent); border-bottom-color: var(--dt-color-accent); }
+  #dt-components .dt-comp-inspect-btn { margin-left: auto; background: transparent; border: 1px solid #333; border-radius: 4px; color: var(--dt-color-muted); font-size: var(--dt-sm); padding: 4px 8px; cursor: pointer; }
+  #dt-components .dt-comp-inspect-btn:hover { border-color: #4f8ef7; color: var(--dt-color-accent); }
+  #dt-components .dt-comp-body { display: none; flex: 1; overflow: hidden; position: relative; }
+  #dt-components.active .dt-comp-body { display: block; }
+#dt-components.active .dt-comp-body .map-view { width: 100%; height: 100%; }
+  #dt-components.active .dt-comp-body .tree-view { width: 100%; height: 100%; }
+
+  /* Map/Legend */
+  .map-legend { position: absolute; bottom: 12px; left: 12px; display: flex; gap: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--dt-color-muted); font-size: var(--dt-sm); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend-dot.component { background: #4f8ef7; }
+  .legend-dot.state { background: var(--dt-color-success); }
+
+  /* Tree */
+  .tree-view { display: flex; height: 100%; overflow: hidden; }
+  .tree-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .tree-panel-header { padding: 8px 14px; color: var(--dt-color-muted); font-size: var(--dt-sm); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #1a1a1a; }
+  .tree-panel-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+  .tree-divider { width: 1px; background: #1a1a1a; flex-shrink: 0; }
+  .tree-item { display: flex; align-items: center; gap: 6px; padding: 5px 14px; color: var(--dt-color-muted); cursor: pointer; transition: all 0.1s; font-size: var(--dt-lg); }
+  .tree-item:hover { background: #161616; }
+  .tree-item.highlighted { background: #0d2030; color: var(--dt-color-accent); }
+  .tree-item.dimmed { opacity: 0.25; }
+  .tree-item-icon { color: #4f8ef7; font-size: var(--dt-sm); }
+  .tree-item-icon.state { color: var(--dt-color-success); }
+  .tree-item-name { flex: 1; color: var(--dt-color-text); }
+  .tree-item-file { color: var(--dt-color-muted); font-size: var(--dt-sm); }
+  .tree-item-dot { width: 6px; height: 6px; border-radius: 50%; background: #333; }
+  .tree-item-dot.mounted { background: var(--dt-color-success); }
+  .state-group { border-bottom: 1px solid #1a1a1a; font-size: var(--dt-lg); }
+  .state-group.highlighted { background: #0d200d; }
+  .state-group.dimmed { opacity: 0.25; }
+  .state-group-header { display: flex; align-items: center; gap: 6px; padding: 6px 14px; cursor: pointer; font-size: var(--dt-lg); }
+  .state-group-header:hover { background: #161616; }
+  .state-group-exports { padding: 0 14px 6px 32px; font-size: var(--dt-md); }
+  .state-export { display: flex; align-items: center; gap: 8px; padding: 2px 0; color: var(--dt-color-muted); font-size: var(--dt-md); }
+  .export-name { color: var(--dt-color-muted); min-width: 80px; font-size: var(--dt-md); }
+  .export-type { background: #1a1a1a; color: var(--dt-color-muted); padding: 1px 5px; border-radius: 3px; font-size: var(--dt-xs); }
+  .export-value { color: #4f8ef7; font-size: var(--dt-md); }
+
+  /* Inspector */
+  .inspector-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--dt-color-muted); text-align: center; padding: 40px; font-size: var(--dt-sm); }
+  .inspector-view { padding: 16px; overflow-y: auto; height: 100%; }
+  .inspector-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #1a1a1a; }
+  .inspector-name { color: var(--dt-color-accent); font-size: var(--dt-lg); font-weight: bold; }
+  .inspector-file { color: var(--dt-color-muted); font-size: var(--dt-sm); flex: 1; }
+  .inspector-badge { padding: 2px 8px; border-radius: 4px; font-size: var(--dt-xs); background: #1a1a1a; color: var(--dt-color-muted); }
+  .inspector-badge.mounted { background: #1a3028; color: var(--dt-color-success); }
+  .inspector-section { margin-bottom: 16px; }
+  .inspector-section-title { color: var(--dt-color-muted); font-size: var(--dt-xs); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .inspector-state-file { background: var(--dt-color-bg-alt); border: 1px solid #1a1a1a; border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+  .inspector-state-name { padding: 6px 12px; color: var(--dt-color-success); border-bottom: 1px solid #1a1a1a; font-size: var(--dt-sm); }
+  .inspector-state-row { display: flex; padding: 4px 12px; gap: 12px; color: var(--dt-color-muted); font-size: var(--dt-sm); }
+  .inspector-state-key { min-width: 80px; color: var(--dt-color-muted); }
+  .inspector-state-val { color: #4f8ef7; }
+  .inspector-children { display: flex; flex-wrap: wrap; gap: 6px; }
+  .inspector-child { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; padding: 3px 8px; color: var(--dt-color-accent); cursor: pointer; font-size: var(--dt-sm); }
+  .inspector-child:hover { border-color: #4f8ef7; }
+ `;
 
 export function toggleDevPanel() {
   if (wrapperEl) { wrapperEl.remove(); wrapperEl = null; return }
@@ -393,28 +508,39 @@ export function toggleDevPanel() {
   wrapperEl = document.createElement('div'); wrapperEl.id = 'engine-devtools-wrapper'
   const panel = document.createElement('div'); panel.id = 'engine-devtools'
   panel.innerHTML = `
+    <div class="dt-drag-handle" id="dt-drag-handle"></div>
     <div class="dt-header"><span>⚡ ENGINE DEVTOOLS</span><button class="dt-close">✕</button></div>
     <div class="dt-tabs">
       <button class="dt-tab active" data-tab="state">State</button>
       <button class="dt-tab" data-tab="storage">Storage</button>
       <button class="dt-tab" data-tab="logs">Logs</button>
+      <button class="dt-tab" data-tab="components">Components</button>
       <button class="dt-tab" data-tab="tests">Tests</button>
     </div>
     <div class="dt-body">
       <div class="dt-panel active" id="dt-state"></div>
       <div class="dt-panel" id="dt-storage"></div>
       <div class="dt-panel" id="dt-logs"></div>
+      <div class="dt-panel" id="dt-components">
+        <div class="dt-comp-header" id="dt-comp-tabs">
+          <button class="dt-comp-tab active" data-subtab="map">Map</button>
+          <button class="dt-comp-tab" data-subtab="tree">Tree</button>
+          <button class="dt-comp-tab" data-subtab="inspector">Inspector</button>
+          <button class="dt-comp-inspect-btn" id="dt-toggle-inspect">◎ Inspect</button>
+        </div>
+        <div class="dt-comp-body" id="dt-comp-body"></div>
+      </div>
       <div class="dt-panel" id="dt-tests">
-         <div id="coverage-root" style="margin-bottom:20px"></div>
+         <div id="coverage-root" class="dt-panel-title"></div>
          <div class="dt-recorder-bar">
-            <span style="font-size:10px; font-weight:900; color:#333">AUTO-RECORDER</span>
+            <span class="dt-panel-title">AUTO-RECORDER</span>
             <div style="display:flex; gap:8px; align-items:center">
-              <span id="network-badge" style="font-size:9px; font-weight:900; color:#f0a030; opacity:0.35; transition:opacity 0.2s">🌐 0 calls</span>
-              <button class="dt-record-btn" id="clear-snapshots-btn" style="background:#333; color:#aaa"><i></i> CLEAR SNAPSHOTS</button>
-              <button class="dt-record-btn" id="record-btn"><i></i> RECORD</button>
+              <span id="network-badge" style="font-size:var(--dt-xs); font-weight:900; color:#f0a030; opacity:0.35; transition:opacity 0.2s">🌐 0 calls</span>
+              <button class="dt-record-btn" id="clear-snapshots-btn" style="background:#333; color:#aaa">CLEAR SNAPSHOTS</button>
+              <button class="dt-record-btn" id="record-btn">RECORD</button>
             </div>
          </div>
-         <div id="recorder-output" class="dt-scroll-box" style="display:none"><div style="color:#444; font-size:10px">Perform actions on the page to generate code...</div></div>
+         <div id="recorder-output" class="dt-scroll-box" style="display:none"><div style="color:var(--dt-color-muted); font-size:var(--dt-sm)">Perform actions on the page to generate code...</div></div>
          <div id="tests-tree" style="margin-top:20px"></div>
       </div>
     </div>
@@ -424,6 +550,12 @@ export function toggleDevPanel() {
   uiCache.testContainer = panel.querySelector('#tests-tree'); uiCache.recorderOutput = panel.querySelector('#recorder-output')
   uiCache.coverageContainer = panel.querySelector('#coverage-root')
   uiCache.networkBadge = panel.querySelector('#network-badge')
+  uiCache.componentsContainer = panel.querySelector('#dt-comp-body')
+
+  const store = buildDevStore()
+  if (uiCache.componentsContainer) {
+    uiCache.componentsContainer.innerHTML = renderComponentsTab(store)
+  }
 
   renderTestStructure(); syncStateUI(); syncStorageUI(); syncLogUI(); syncCoverageUI()
   wrapperEl.appendChild(panel); document.body.appendChild(wrapperEl)
@@ -465,8 +597,153 @@ export function toggleDevPanel() {
       panel.querySelector(`#dt-${activeTab}`)?.classList.add('active')
     })
   })
+
+  // Components tab sub-tabs
+  const compTabs = panel.querySelector('#dt-comp-tabs')
+  const compBody = panel.querySelector('#dt-comp-body')
+  compTabs?.querySelectorAll('.dt-comp-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      compActiveTab = (tab as HTMLElement).dataset.subtab!
+      compTabs.querySelectorAll('.dt-comp-tab').forEach(t => t.classList.remove('active'))
+      tab.classList.add('active')
+      const store = buildDevStore()
+      if (compBody) compBody.innerHTML = renderComponentsTab(store)
+      if (compActiveTab === 'tree' && compBody) {
+        setTimeout(() => setupTreeHoverListeners(compBody as HTMLElement), 50)
+      }
+    })
+  })
+
+  const inspectBtn = compTabs?.querySelector('#dt-toggle-inspect') as HTMLElement | null
+  inspectBtn?.addEventListener('click', () => {
+    if (isInspecting()) {
+      disableInspect()
+      inspectBtn.textContent = '◎ Inspect'
+      const store = buildDevStore()
+      if (compBody) compBody.innerHTML = renderComponentsTab(store)
+    } else {
+      enableInspect((comp) => {
+        compActiveTab = 'inspector'
+        compTabs?.querySelectorAll('.dt-comp-tab').forEach(t => {
+          t.classList.toggle('active', (t as HTMLElement).dataset.subtab === 'inspector')
+        })
+        const store = buildDevStore()
+        if (compBody) compBody.innerHTML = renderComponentsTab(store, comp)
+      })
+      inspectBtn.textContent = '◎ Inspecting'
+    }
+  })
   uiCache.testContainer?.querySelectorAll('.dt-run-btn').forEach(btn => {
     btn.addEventListener('click', () => { play((btn as HTMLElement).dataset.suite!, undefined, { devToolsReporter: true }) })
+  })
+
+  // Drag by header
+  const header = panel.querySelector('.dt-header') as HTMLElement
+
+  let isDragging = false
+  let isResizing = false
+  let dragOffsetX = 0
+  let dragOffsetY = 0
+  let startX = 0
+  let startY = 0
+  let startWidth = 0
+  let startHeight = 0
+  let resizeDir = ''
+
+  header?.addEventListener('mousedown', (e) => {
+    if ((e.target as HTMLElement).closest('.dt-close')) return
+    isDragging = true
+    dragOffsetX = e.clientX - (wrapperEl?.offsetLeft ?? 0)
+    dragOffsetY = e.clientY - (wrapperEl?.offsetTop ?? 0)
+    document.body.style.userSelect = 'none'
+  })
+
+  panel.addEventListener('mousedown', (e) => {
+    if ((e.target as HTMLElement).closest('.dt-header')) return
+    
+    const rect = panel.getBoundingClientRect()
+    const edgeX = e.clientX - rect.left
+    const edgeY = e.clientY - rect.top
+    const w = rect.width
+    const h = rect.height
+    const edge = 20
+    
+    if (edgeX <= edge && edgeY <= edge) {
+      isResizing = true
+      resizeDir = 'nw'
+    } else if (edgeX >= w - edge && edgeY <= edge) {
+      isResizing = true
+      resizeDir = 'ne'
+    } else if (edgeX <= edge && edgeY >= h - edge) {
+      isResizing = true
+      resizeDir = 'sw'
+    } else if (edgeX >= w - edge && edgeY >= h - edge) {
+      isResizing = true
+      resizeDir = 'se'
+    } else if (edgeX <= edge) {
+      isResizing = true
+      resizeDir = 'w'
+    } else if (edgeX >= w - edge) {
+      isResizing = true
+      resizeDir = 'e'
+    } else if (edgeY <= edge) {
+      isResizing = true
+      resizeDir = 'n'
+    } else if (edgeY >= h - edge) {
+      isResizing = true
+      resizeDir = 's'
+    } else {
+      return
+    }
+    
+    startX = e.clientX
+    startY = e.clientY
+    startWidth = panel.offsetWidth
+    startHeight = panel.offsetHeight
+    panel.style.left = `${wrapperEl?.offsetLeft ?? 0}px`
+    panel.style.top = `${wrapperEl?.offsetTop ?? 0}px`
+    document.body.style.userSelect = 'none'
+  })
+
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging && wrapperEl) {
+      wrapperEl.style.left = `${e.clientX - dragOffsetX}px`
+      wrapperEl.style.top = `${e.clientY - dragOffsetY}px`
+    }
+    if (isResizing && panel && wrapperEl) {
+      const dx = e.clientX - startX
+      const dy = e.clientY - startY
+      let newWidth = startWidth
+      let newHeight = startHeight
+      let newLeft = wrapperEl.offsetLeft
+      let newTop = wrapperEl.offsetTop
+      
+      if (resizeDir.includes('e')) {
+        newWidth = Math.max(320, startWidth + dx)
+      }
+      if (resizeDir.includes('w')) {
+        newWidth = Math.max(320, startWidth - dx)
+        newLeft = (wrapperEl.offsetLeft + startWidth - newWidth)
+      }
+      if (resizeDir.includes('s')) {
+        newHeight = Math.max(300, startHeight + dy)
+      }
+      if (resizeDir.includes('n')) {
+        newHeight = Math.max(300, startHeight - dy)
+        newTop = (wrapperEl.offsetTop + startHeight - newHeight)
+      }
+      
+      panel.style.width = `${newWidth}px`
+      panel.style.height = `${newHeight}px`
+      wrapperEl.style.left = `${newLeft}px`
+      wrapperEl.style.top = `${newTop}px`
+    }
+  })
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false
+    isResizing = false
+    document.body.style.userSelect = ''
   })
 }
 
@@ -577,6 +854,122 @@ function formatSelector(selector: any): string {
   if (selector.type === 'text') return `"${selector.value}"`
   if (selector.type === 'role') return `<${selector.roleType}>`
   return String(selector.value)
+}
+
+function buildDevStore() {
+  const staticTree = (window as any).__engineStaticTree
+
+  const components: any[] = (staticTree?.components ?? [])
+    .map((comp: any) => {
+      const reads: string[] = []
+      componentRegistry.forEach((comps, stateFile) => {
+        if (comps.has(comp.name)) reads.push(stateFile)
+      })
+
+      const stateValues: Record<string, Record<string, any>> = {}
+      reads.forEach(file => {
+        const mod = stateModules.get(file)
+        if (!mod) return
+        stateValues[file] = {}
+        Object.keys(mod).forEach(k => {
+          if (typeof mod[k] !== 'function') {
+            stateValues[file][k] = mod[k]
+          }
+        })
+      })
+
+      return {
+        name:        comp.name,
+        file:        comp.file,
+        renders:     comp.renders,
+        renderedBy:  comp.renderedBy,
+        reads,
+        mounted:     instances.has(comp.name),
+        stateValues
+      }
+    })
+
+  const state: any[] = []
+  stateModules.forEach((mod, file) => {
+    const shortName = file.split('/').pop()?.replace('.state.ts', '') ?? file
+    const usedBy: string[] = []
+
+    componentRegistry.get(file)?.forEach(comp => {
+      if (!usedBy.includes(comp)) usedBy.push(comp)
+    })
+
+    const exports = Object.keys(mod).map(name => ({
+      name,
+      value:      typeof mod[name] === 'function' ? null : mod[name],
+      isFunction: typeof mod[name] === 'function'
+    }))
+
+    state.push({ file, shortName, exports, usedBy })
+  })
+
+  return { components, state }
+}
+
+function renderComponentsTab(store: any, selected?: string): string {
+  switch (compActiveTab) {
+    case 'map':       return renderMap(store, { onHover: () => {} })
+    case 'tree':      return renderTree(store, {})
+    case 'inspector': return renderInspector(store, selected)
+    default:          return ''
+  }
+}
+
+function highlightTreeItem(name: string, type: 'component' | 'state', store: any) {
+  document.querySelectorAll('.tree-item.highlighted, .tree-item.dimmed, .state-group.highlighted, .state-group.dimmed').forEach(el => {
+    el.classList.remove('highlighted', 'dimmed')
+  })
+  if (!name || !store) return
+  
+  if (type === 'component') {
+    const comp = store.components.find((c: any) => c.name === name)
+    if (!comp) return
+    document.querySelectorAll('.tree-item[data-component]').forEach(el => {
+      const n = (el as HTMLElement).dataset.component!
+      el.classList.toggle('dimmed', n !== name)
+    })
+    comp.reads.forEach((stateFile: string) => {
+      const stateEl = document.querySelector(`.state-group[data-state="${stateFile}"]`)
+      if (stateEl) stateEl.classList.add('highlighted')
+    })
+  } else {
+    const state = store.state.find((s: any) => s.file === name)
+    if (!state) return
+    document.querySelectorAll('.state-group[data-state]').forEach(el => {
+      const f = (el as HTMLElement).dataset.state!
+      el.classList.toggle('dimmed', f !== name)
+    })
+    state.usedBy.forEach((compName: string) => {
+      const compEl = document.querySelector(`.tree-item[data-component="${compName}"]`)
+      if (compEl) compEl.classList.add('highlighted')
+    })
+  }
+}
+
+function setupTreeHoverListeners(container: HTMLElement) {
+  const store = buildDevStore()
+  container.querySelectorAll('.tree-item[data-component]').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const name = (el as HTMLElement).dataset.component!
+      highlightTreeItem(name, 'component', store)
+    })
+    el.addEventListener('mouseleave', () => {
+      highlightTreeItem('', 'component', store)
+    })
+  })
+  container.querySelectorAll('.state-group[data-state]').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const file = (el as HTMLElement).dataset.state!
+      highlightTreeItem(file, 'state', store)
+    })
+    el.addEventListener('mouseleave', () => {
+      highlightTreeItem('', 'state', store)
+    })
+  })
 }
 
 // @ts-ignore

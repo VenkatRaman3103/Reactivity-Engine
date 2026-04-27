@@ -30,7 +30,7 @@ function handleInspectClick(e: MouseEvent) {
 
   // do not intercept clicks on the devtools window
   const target = e.target as HTMLElement
-  if (target.closest('#engine-comp-window')) return
+  if (target.closest('#engine-devtools-wrapper')) return
   if (target.closest('#engine-launcher'))    return
 
   e.preventDefault()
@@ -48,7 +48,7 @@ function handleInspectHover(e: MouseEvent) {
   if (!_isInspecting) return
 
   const target = e.target as HTMLElement
-  if (target.closest('#engine-comp-window')) return
+  if (target.closest('#engine-devtools-wrapper')) return
   if (target.closest('#engine-launcher'))    return
 
   removeInspectHighlight()

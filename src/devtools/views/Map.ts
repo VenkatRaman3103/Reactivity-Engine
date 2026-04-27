@@ -153,17 +153,17 @@ async function initD3Graph(store: any, opts: any) {
     .attr('text-anchor', 'middle')
     .attr('dy',          -4)
     .attr('fill',        (d: any) => d.type === 'component' ? '#7ec8e3' : '#7eca8b')
-    .attr('font-size',   12)
-    .attr('font-family', 'monospace')
+    .attr('font-size',   '12px')
+    .attr('font-family', "'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace")
     .text((d: any) => d.label)
 
   // node file
   node.append('text')
     .attr('text-anchor', 'middle')
     .attr('dy',          12)
-    .attr('fill',        '#555')
-    .attr('font-size',   9)
-    .attr('font-family', 'monospace')
+    .attr('fill',        '#666')
+    .attr('font-size',   '9px')
+    .attr('font-family', "'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace")
     .text((d: any) => d.file.split('/').pop())
 
   // mounted indicator

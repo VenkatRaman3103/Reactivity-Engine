@@ -1,31 +1,113 @@
 // src/devtools/views/Tree.ts
 
+let hoveredItem: string | null = null
+let hoveredType: 'component' | 'state' | null = null
+let _store: any = null
+let _onHighlight: ((name: string, type: 'component' | 'state') => void) | null = null
+
 export function renderTree(store: any, opts: any): string {
+  _store = store
+  _onHighlight = opts.onHighlight ?? null
+  
   const allComps  = store.components
   const roots     = allComps.filter((c: any) => c.renderedBy.length === 0)
 
   const leftHTML  = renderComponentTree(roots, allComps, 0)
   const rightHTML = renderStateTree(store.state)
 
-  setTimeout(() => opts.onHover?.(), 0)
-
   return `
     <div class="tree-view">
       <div class="tree-panel">
         <div class="tree-panel-header">Components</div>
-        <div class="tree-panel-body">
-          ${leftHTML || '<div style="color:#444;padding:16px;font-size:11px">No components found</div>'}
+        <div class="tree-panel-body" id="tree-comps-body">
+          ${leftHTML || '<div class="dt-empty">No components found</div>'}
         </div>
       </div>
       <div class="tree-divider"></div>
       <div class="tree-panel">
         <div class="tree-panel-header">State</div>
-        <div class="tree-panel-body">
-          ${rightHTML || '<div style="color:#444;padding:16px;font-size:11px">No state files found</div>'}
+        <div class="tree-panel-body" id="tree-state-body">
+          ${rightHTML || '<div class="dt-empty">No state files found</div>'}
         </div>
       </div>
     </div>
   `
+}
+
+export function setupTreeHover(onHighlight: (name: string, type: 'component' | 'state') => void) {
+  _onHighlight = onHighlight
+  
+  document.querySelectorAll('.tree-item[data-component]').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const name = (el as HTMLElement).dataset.component!
+      hoveredItem = name
+      hoveredType = 'component'
+      onHighlight(name, 'component')
+    })
+    el.addEventListener('mouseleave', () => {
+      hoveredItem = null
+      hoveredType = null
+      clearHighlights()
+    })
+  })
+
+  document.querySelectorAll('.state-group[data-state]').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const file = (el as HTMLElement).dataset.state!
+      hoveredItem = file
+      hoveredType = 'state'
+      onHighlight(file, 'state')
+    })
+    el.addEventListener('mouseleave', () => {
+      hoveredItem = null
+      hoveredType = null
+      clearHighlights()
+    })
+  })
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.tree-item.highlighted, .tree-item.dimmed, .state-group.highlighted, .state-group.dimmed').forEach(el => {
+    el.classList.remove('highlighted', 'dimmed')
+  })
+}
+
+export function highlightTreeConnections(name: string, type: 'component' | 'state') {
+  if (!_store) return
+  
+  clearHighlights()
+  
+  if (type === 'component') {
+    const comp = _store.components.find((c: any) => c.name === name)
+    if (!comp) return
+    
+    // dim all components except the hovered one
+    document.querySelectorAll('.tree-item[data-component]').forEach(el => {
+      const n = (el as HTMLElement).dataset.component!
+      el.classList.toggle('dimmed', n !== name)
+    })
+    
+    // highlight all state files that this component reads
+    comp.reads.forEach((stateFile: string) => {
+      const stateEl = document.querySelector(`.state-group[data-state="${stateFile}"]`)
+      if (stateEl) stateEl.classList.add('highlighted')
+    })
+  } else {
+    const state = _store.state.find((s: any) => s.file === name)
+    if (!state) return
+    
+    // dim all state except the hovered one
+    document.querySelectorAll('.state-group[data-state]').forEach(el => {
+      const f = (el as HTMLElement).dataset.state!
+      el.classList.toggle('dimmed', f !== name)
+    })
+    
+    // highlight all components that read this state
+    state.usedBy.forEach((compName: string) => {
+      const compEl = document.querySelector(`.tree-item[data-component="${compName}"]`)
+      if (compEl) compEl.classList.add('highlighted')
+    })
+  }
 }
 
 function buildTree(components: any[]): any[] {
