@@ -143,4 +143,4 @@ export function beforeEach(fn: () => void | Promise<void>) {
  * Universal play function that handles both standalone steps 
  * and registered suites by name.
  */
-export { play } from "./runner"
+export { play, settle } from "./runner"

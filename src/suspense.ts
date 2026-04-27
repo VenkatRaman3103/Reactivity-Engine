@@ -35,19 +35,7 @@ export function Suspense(props: SuspenseProps): Node {
     })
   }
 
-  // Refactored to avoid "Suspense Loop":
-  // Instead of swapping nodes (which unmounts and remounts components, 
-  // triggering their onMount effects repeatedly), we render BOTH and toggle visibility.
-  
-  const content = h('div', { 'data-suspense-content': '' }, props.children);
-  const fallback = h('div', { 'data-suspense-fallback': '' }, props.fallback);
-  const container = h('div', { 'data-suspense': '' }, content, fallback);
-
-  createEffect(() => {
-    const active = pendingCount.value > 0;
-    (content as HTMLElement).style.display = active ? 'none' : '';
-    (fallback as HTMLElement).style.display = active ? '' : 'none';
-  });
-
-  return container;
+  return h('div', { 'data-suspense': '' }, () => {
+    return pendingCount.value > 0 ? props.fallback : props.children
+  })
 }

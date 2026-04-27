@@ -253,10 +253,11 @@ function applyChild(parent: Node, child: Child) {
 }
 
 function applyReactive(parent: Node, fn: () => Child) {
-  let marker = document.createComment("");
-  parent.appendChild(marker);
+  const startMarker = document.createComment("reactive-start");
+  const endMarker = document.createComment("reactive-end");
+  parent.appendChild(startMarker);
+  parent.appendChild(endMarker);
 
-  let currentNodes: Node[] = [];
   let keyedNodes: KeyedNode[] = [];
   let isKeyed = false;
   let firstRun = true;
@@ -264,6 +265,7 @@ function applyReactive(parent: Node, fn: () => Child) {
   createEffect(() => {
     const raw = fn();
     const children = Array.isArray(raw) ? raw : [raw];
+    const currentParent = endMarker.parentNode || parent;
 
     if (firstRun) {
       firstRun = false;
@@ -272,8 +274,8 @@ function applyReactive(parent: Node, fn: () => Child) {
 
     if (isKeyed) {
       keyedNodes = reconcile(
-        parent,
-        marker,
+        currentParent,
+        endMarker,
         keyedNodes,
         children,
         (item) => {
@@ -284,31 +286,22 @@ function applyReactive(parent: Node, fn: () => Child) {
         (item) => item.__key
       );
     } else {
-      // Cleanup previous nodes
-      currentNodes.forEach(n => {
-        if (n.parentNode) {
-          n.parentNode.removeChild(n);
-        }
-      });
-      currentNodes = [];
+      // Robust cleanup: remove all nodes between start and end markers.
+      // This correctly handles cases where nested effects may have inserted 
+      // multiple sibling nodes that are not tracked in a simple array.
+      while (startMarker.nextSibling && startMarker.nextSibling !== endMarker) {
+        currentParent.removeChild(startMarker.nextSibling);
+      }
 
       const fragment = document.createDocumentFragment();
       children.forEach(c => {
         if (c === null || c === undefined || c === false) return;
         
         const n = toNode(c);
-        if (n instanceof DocumentFragment) {
-          // Track all individual nodes from the fragment
-          const fragNodes = Array.from(n.childNodes);
-          fragment.appendChild(n);
-          currentNodes.push(...fragNodes);
-        } else {
-          fragment.appendChild(n);
-          currentNodes.push(n);
-        }
+        fragment.appendChild(n);
       });
 
-      marker.parentNode?.insertBefore(fragment, marker);
+      currentParent.insertBefore(fragment, endMarker);
     }
   });
 }
@@ -324,11 +317,10 @@ function toNode(child: Child): Node {
     return f;
   }
   if (typeof child === "function") {
-    const n = document.createTextNode("");
-    createEffect(() => {
-       n.textContent = String(child());
-    });
-    return n;
+    const fn = child as () => Child;
+    const f = document.createDocumentFragment();
+    applyReactive(f, fn);
+    return f;
   }
   if (child && typeof child === "object" && "__node" in child) {
     return toNode((child as Record<string, any>).__node);

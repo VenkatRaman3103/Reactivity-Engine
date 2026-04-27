@@ -7,33 +7,33 @@ const placeholderStyle = "min-height: 40px; padding: 12px; background: #f8f9fa; 
 const contentStyle = { minHeight: '40px', padding: '12px', background: '#e3f2fd', borderRadius: '8px', color: '#1976d2', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const btnStyle = { padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', marginRight: '8px', fontSize: '13px', fontWeight: 600 }
 
-const BasicDummy = () => <div id="basic-content" style={contentStyle}>Basic Loaded</div>
+const BasicDummy = () => <div id="lazy-basic-content" style={contentStyle}>Basic Loaded</div>
 const BasicLazy = lazy(async () => {
-  await delay(800)
+  await delay(3000)
   return { default: BasicDummy }
 }, {
-  loading: () => <div id="basic-loading" style={placeholderStyle}>Loading...</div>
+  loading: () => <div id="lazy-basic-loading" style={placeholderStyle}>Loading...</div>
 })
 
 const ErrorLazy = lazy(async () => {
-  await delay(400)
+  await delay(3000)
   throw new Error('Network failure')
 }, {
-  loading: () => <div id="error-loading" style={placeholderStyle}>Loading...</div>,
-  error: (e) => <div id="error-content" style={{...contentStyle, background: '#ffebee', color: '#c62828'}}>Failed: {e.message}</div>
+  loading: () => <div id="lazy-error-loading" style={placeholderStyle}>Loading...</div>,
+  error: (e) => <div id="lazy-error-content" style={{...contentStyle, background: '#ffebee', color: '#c62828'}}>Failed: {e.message}</div>
 })
 
-const PreloadDummy = () => <div id="preload-content" style={contentStyle}>Preload Loaded</div>
+const PreloadDummy = () => <div id="lazy-preload-content" style={contentStyle}>Preload Loaded</div>
 const PreloadLazy = lazy(async () => {
-  await delay(500)
+  await delay(3000)
   return { default: PreloadDummy }
 }, {
-  loading: () => <div id="preload-loading" style={placeholderStyle}>Loading...</div>
+  loading: () => <div id="lazy-preload-loading" style={placeholderStyle}>Loading...</div>
 })
 
-const SuspenseDummy = () => <div id="suspense-content" style={contentStyle}>Suspense Loaded</div>
+const SuspenseDummy = () => <div id="lazy-suspense-content" style={contentStyle}>Suspense Loaded</div>
 const SuspenseLazy = lazy(async () => {
-  await delay(600)
+  await delay(3000)
   return { default: SuspenseDummy }
 })
 
@@ -43,8 +43,17 @@ export default function LazyDemo() {
   const [showPreload, setShowPreload] = createSignal(false)
   const [showSuspense, setShowSuspense] = createSignal(false)
   
+  const resetAll = () => {
+    setShowBasic(false)
+    setShowError(false)
+    setShowPreload(false)
+    setShowSuspense(false)
+  }
+
   return (
     <div style={{ display: 'grid', gap: '24px', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+      <button id="btn-reset-lazy" style={{ display: 'none' }} onClick={resetAll}>Reset</button>
+
       <div style={{ padding: '20px', background: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
         <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Basic Lazy Load</h3>
         <div style={{ marginBottom: '16px' }}>

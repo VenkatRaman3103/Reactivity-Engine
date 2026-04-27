@@ -297,13 +297,29 @@ async function runStep(step: Step, speed: number, context: { suiteName: string, 
       const start  = Date.now()
       
       while (Date.now() - start < AUTO_TIMEOUT) {
-        const el = resolveElement(step.selector)
-        if (exists && el) return
-        if (!exists && !el) return
+        const el = resolveElement(step.selector) as HTMLElement
+        const isActuallyPresent = !!(el && isElementVisible(el))
+
+        if (exists && isActuallyPresent) return
+        if (!exists && !isActuallyPresent) return
         await sleep(100)
       }
       
-      throw new Error(`Expected ${formatSelector(step.selector)} to ${exists ? 'exist' : 'be absent'}`)
+      const elFound = resolveElement(step.selector)
+      if (elFound instanceof HTMLElement) {
+        const diagnostics = {
+          id: elFound.id,
+          tag: elFound.tagName,
+          visible: isElementVisible(elFound),
+          parent: elFound.parentElement?.tagName || 'none',
+          siblings: elFound.parentElement?.children.length,
+          parentHtml: elFound.parentElement?.innerHTML.slice(0, 500)
+        }
+        log.test_debug(`[Failure Diagnostics] ${JSON.stringify(diagnostics)}`)
+        console.error("Test failure node diagnostics:", elFound)
+        console.log("Parent structure:", elFound.parentElement?.innerHTML)
+      }
+      throw new Error(`Expected ${formatSelector(step.selector)} to ${exists ? 'exist and be visible' : 'be absent or hidden'}`)
     }
 
     case 'pause': {
@@ -424,7 +440,7 @@ async function ensureInViewport(el: HTMLElement) {
   }
 }
 
-async function settle() {
+export async function settle() {
   return new Promise(r => queueMicrotask(() => setTimeout(r, 0)))
 }
 

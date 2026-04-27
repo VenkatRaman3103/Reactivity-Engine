@@ -43,7 +43,7 @@ export {
   suite, test, beforeEach, mock
 } from "./test/index";
 export * from "./utils/index";
-export { lazy, type LazyOptions } from "./lazy";
+export * from "./lazy";
 
 if (import.meta.env.DEV) {
   Promise.all([

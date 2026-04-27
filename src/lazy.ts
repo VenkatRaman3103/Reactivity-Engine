@@ -11,6 +11,8 @@ export interface LazyOptions {
   error?: (e: Error) => Node
 }
 
+const registry = new Set<{ reset: () => void }>()
+
 export function lazy(
   importFn: ImportFn,
   options: LazyOptions = {}
@@ -22,6 +24,13 @@ export function lazy(
 
   const trigger = new Signal(0)
   trigger.label = 'engine:lazy'
+
+  const reset = () => {
+    state = 'idle'
+    component = null
+    error = null
+    trigger.value++
+  }
 
   const load = () => {
     if (state === 'loading' || state === 'loaded') return
@@ -76,8 +85,15 @@ export function lazy(
   }
 
   LazyComponent.preload = load
+  
+  registry.add({ reset })
 
   return LazyComponent
+}
+
+export function engineResetAllLazyStates() {
+  console.log('[Lazy] Resetting all components');
+  registry.forEach(entry => entry.reset())
 }
 
 function createLoadingPlaceholder(): Node {
