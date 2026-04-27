@@ -49,6 +49,7 @@ if (import.meta.env.DEV) {
   Promise.all([
     import('./hmr').then(m      => m.initHMR()),
     import('./devtools').then(m => m.initDevTools()),
+    import('./devtools/index').then(m => m.initDevTools()),
     // Register example suites
     import('../example/demo.test'),
     import('../example/kitchen-sink.test'),

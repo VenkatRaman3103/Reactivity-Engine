@@ -6,13 +6,28 @@ import { transformWhenConditions } from "./transform-when";
 import { transformBind } from "./transform-bind";
 import { resolve, isAbsolute } from "path";
 import { fileURLToPath } from "url";
+import { buildComponentTree } from './tree-sitter';
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export function engine(): Plugin {
+  const root = process.cwd();
+  let staticTree = buildComponentTree(root);
+
   return {
     name: "engine",
     enforce: "pre",
+
+    // inject static tree into browser
+    transformIndexHtml(html) {
+      if (process.env.NODE_ENV === 'production') return html;
+      return html.replace(
+        '</head>',
+        `<script>
+          window.__engineStaticTree = ${JSON.stringify(staticTree)}
+        </script></head>`
+      );
+    },
 
     handleHotUpdate({ file, server }: any) {
       if (file.endsWith('.state.ts')) {
@@ -67,6 +82,19 @@ export function engine(): Plugin {
     },
 
     configureServer(server) {
+      // rebuild tree when tsx files change
+      server.watcher.on('change', (file) => {
+        if (file.endsWith('.tsx')) {
+          staticTree = buildComponentTree(root);
+          // send to browser via HMR
+          server.ws.send({
+            type:  'custom',
+            event: 'engine:tree-update',
+            data:  staticTree
+          });
+        }
+      });
+
       server.middlewares.use(async (req, res, next) => {
         if (req.url?.startsWith("/__engine-ls")) {
           const url = new URL(req.url, `http://${req.headers.host}`);

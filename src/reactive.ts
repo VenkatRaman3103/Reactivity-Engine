@@ -5,7 +5,10 @@ export interface Observer {
   dependencies: Set<Set<Observer>>;
   depth: number;
   execute: () => void;
+  componentName?: string | null;
 }
+
+export const componentRegistry = new Map<string, Set<string>>();
 
 let activeObserver: Observer | null = null;
 const observerStack: (Observer | null)[] = [];
@@ -37,6 +40,14 @@ export class Signal<T> {
     if (activeObserver) {
       this.subscribers.add(activeObserver);
       activeObserver.dependencies.add(this.subscribers);
+
+      if (this.label && this.label.includes(':') && activeObserver.componentName) {
+        const [stateFile] = this.label.split(':');
+        if (!componentRegistry.has(stateFile)) {
+          componentRegistry.set(stateFile, new Set());
+        }
+        componentRegistry.get(stateFile)!.add(activeObserver.componentName);
+      }
     }
     if (this.label) (window as any).__engine?.recordAccess?.(this.label);
     return this._value;

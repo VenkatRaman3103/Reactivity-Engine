@@ -1,10 +1,11 @@
-import { pushOwner, popOwner } from "./effect";
+import { pushOwner, popOwner, pushComponentName, popComponentName } from "./effect";
 import { engineError, engineWarn, engineInfo } from "./errors";
 import { cleanupPortals } from "./portal";
 import { setCurrentOwnerId, triggerMount, triggerUnmount, triggerErr, cleanupLifecycle } from "./lifecycle";
 
 export interface Instance {
   id: string;
+  name: string;
   fn: () => Node;
   container: Element;
   el: Node | null;
@@ -75,6 +76,7 @@ export function mountComponent(
 
   const inst: Instance = {
     id: cid,
+    name: fn.name || 'Anonymous',
     fn,
     container,
     el: null,
@@ -94,12 +96,14 @@ function render(inst: Instance) {
   try {
     rendering = inst.id;
     pushOwner(inst as any);
+    pushComponentName(inst.name);
     setCurrentOwnerId(inst.id);
 
     const isFirstRender = !inst.mounted;
     const el = inst.fn();
 
     setCurrentOwnerId(null);
+    popComponentName();
     popOwner();
     rendering = null;
 
@@ -149,6 +153,7 @@ function render(inst: Instance) {
     engineInfo("Component", `'${inst.id}' rendered successfully`);
   } catch (e: any) {
     setCurrentOwnerId(null);
+    popComponentName();
     popOwner();
     rendering = null;
 

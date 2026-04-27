@@ -1,4 +1,4 @@
-import { createEffect } from "./effect";
+import { createEffect, pushComponentName, popComponentName } from "./effect";
 import { pushObserver, popObserver } from "./reactive";
 import { engineError, engineWarn } from "./errors";
 import { reconcile, getKey, KeyedNode } from "./keyed";
@@ -87,13 +87,16 @@ export function h(
       props_.children = children.length === 1 ? children[0] : children;
     }
 
-    // Component Isolation: Ensure the component function call itself 
+    // Component Isolation: Ensure the component function call itself
     // does not subscribe to the parent's reactive context.
+    // Also track the rendering component name for componentRegistry.
     pushObserver(null);
+    pushComponentName(tag.name || null);
     let result: any;
     try {
       result = tag(props_);
     } finally {
+      popComponentName();
       popObserver();
     }
 
@@ -118,6 +121,10 @@ export function h(
           "Components must return JSX. Plain objects, strings, and " +
           "numbers are not valid return values at the top level.",
       });
+    }
+
+    if (result instanceof HTMLElement) {
+      result.dataset.engineComponent = tag.name;
     }
 
     return result;

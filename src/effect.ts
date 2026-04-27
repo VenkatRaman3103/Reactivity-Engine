@@ -21,6 +21,26 @@ interface Owner {
 let currentOwner: Owner | null = null;
 const ownerStack: (Owner | null)[] = [];
 
+// Separate stack for tracking the currently-rendering component name.
+// This is needed because h() isolates observer context with pushObserver(null),
+// but doesn't change the owner. Without this, all child component effects
+// inherit the top-level mounted component's name.
+let _renderingComponentName: string | null = null;
+const _nameStack: (string | null)[] = [];
+
+export function pushComponentName(name: string | null) {
+  _nameStack.push(_renderingComponentName);
+  _renderingComponentName = name;
+}
+
+export function popComponentName() {
+  _renderingComponentName = _nameStack.pop() ?? null;
+}
+
+export function getRenderingComponentName(): string | null {
+  return _renderingComponentName;
+}
+
 export function pushOwner(owner: Owner | null) {
   ownerStack.push(currentOwner);
   currentOwner = owner;
@@ -37,12 +57,17 @@ export class Effect implements Observer {
   mountedHooks = new Set<any>();
   private cleanupFn?: () => void;
   public ownerId: string | null = null;
+  public componentName: string | null = null;
   public disposed = false;
   public depth: number;
 
   constructor(private fn: () => void | (() => void)) {
     this.depth = currentOwner ? ((currentOwner as any).depth || 0) + 1 : 0;
     this.ownerId = currentOwner ? ((currentOwner as any).id || (currentOwner as any).ownerId || null) : null;
+    // Prefer the specific rendering component name over the owner's name.
+    // _renderingComponentName is set by h() per-component and by render() per-instance.
+    this.componentName = _renderingComponentName
+      || (currentOwner ? ((currentOwner as any).name || (currentOwner as any).componentName || null) : null);
   }
 
   execute() {
