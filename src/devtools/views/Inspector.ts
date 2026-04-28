@@ -2,13 +2,15 @@
 
 let _isInspecting  = false
 let _onSelect: ((name: string) => void) | null = null
+let _onDisable: (() => void) | null = null
 let _selectedComp: string | null = null
 
 export function isInspecting() { return _isInspecting }
 
-export function enableInspect(onSelect: (name: string) => void) {
+export function enableInspect(onSelect: (name: string) => void, onDisable?: () => void) {
   _isInspecting = true
   _onSelect     = onSelect
+  _onDisable    = onDisable ?? null
   document.body.style.cursor = 'crosshair'
 
   document.addEventListener('click', handleInspectClick, true)
@@ -18,6 +20,8 @@ export function enableInspect(onSelect: (name: string) => void) {
 export function disableInspect() {
   _isInspecting = false
   _onSelect     = null
+  _onDisable?.()
+  _onDisable    = null
   document.body.style.cursor = ''
 
   document.removeEventListener('click', handleInspectClick, true)
@@ -41,6 +45,7 @@ function handleInspectClick(e: MouseEvent) {
   if (comp) {
     _selectedComp = comp
     _onSelect?.(comp)
+    disableInspect()
   }
 }
 

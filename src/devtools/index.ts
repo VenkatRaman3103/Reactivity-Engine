@@ -112,28 +112,32 @@ function renderWindow() {
   const store = buildDevStore()
 
   windowEl.innerHTML = `
-    <div class="cw-header" id="cw-drag-handle">
-      <div class="cw-tabs">
+    <div class="cw-container">
+      <div class="cw-sidebar">
         <button class="cw-tab ${activeTab === 'map'      ? 'active' : ''}"
-          data-tab="map">Map</button>
+          data-tab="map" title="Map">◈</button>
         <button class="cw-tab ${activeTab === 'tree'     ? 'active' : ''}"
-          data-tab="tree">Tree</button>
+          data-tab="tree" title="Tree">⬡</button>
         <button class="cw-tab ${activeTab === 'inspector'? 'active' : ''}"
-          data-tab="inspector">Inspector</button>
+          data-tab="inspector" title="Inspector">🔍</button>
       </div>
-      <div class="cw-header-actions">
-        ${activeTab === 'inspector'
-          ? `<button class="cw-inspect-btn ${isInspecting() ? 'active' : ''}"
-               id="cw-toggle-inspect">
-               ${isInspecting() ? '◎ Inspecting' : '◎ Inspect'}
-             </button>`
-          : ''
-        }
-        <button class="cw-close" id="cw-close">✕</button>
+      <div class="cw-content">
+        <div class="cw-header" id="cw-drag-handle">
+          <div class="cw-header-actions">
+            ${activeTab === 'inspector'
+              ? `<button class="cw-inspect-btn ${isInspecting() ? 'active' : ''}"
+                   id="cw-toggle-inspect">
+                   ${isInspecting() ? '◎ Inspecting' : '◎ Inspect'}
+                 </button>`
+              : ''
+            }
+            <button class="cw-close" id="cw-close">✕</button>
+          </div>
+        </div>
+        <div class="cw-body" id="cw-body">
+          ${renderTabContent(store)}
+        </div>
       </div>
-    </div>
-    <div class="cw-body" id="cw-body">
-      ${renderTabContent(store)}
     </div>
   `
 
@@ -164,6 +168,8 @@ function renderWindow() {
         enableInspect((comp) => {
           activeTab = 'inspector'
           refreshWindow(comp)
+        }, () => {
+          refreshWindow()
         })
       }
       refreshWindow()

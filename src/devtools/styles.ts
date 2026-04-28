@@ -84,10 +84,48 @@ export function injectStyles() {
       font-size:     12px;
     }
 
+    .cw-container {
+      display:       flex;
+      height:        100%;
+    }
+
+    .cw-sidebar {
+      display:        flex;
+      flex-direction: column;
+      background:     #0f0f0f;
+      padding:        8px 0;
+      border-right:    1px solid #1a1a1a;
+      gap:            4px;
+      flex-shrink:    0;
+    }
+
+    .cw-sidebar .cw-tab {
+      background:    transparent;
+      border:        none;
+      padding:       12px 14px;
+      color:         #666;
+      font-size:     16px;
+      cursor:        pointer;
+      border-left:   2px solid transparent;
+      display:       flex;
+      align-items:   center;
+      justify-content: center;
+      transition:    all 0.15s;
+    }
+    .cw-sidebar .cw-tab:hover  { color: #aaa; background: rgba(255,255,255,0.03); }
+    .cw-sidebar .cw-tab.active { color: #7ec8e3; border-left-color: #7ec8e3; background: rgba(126,200,227,0.05); }
+
+    .cw-content {
+      flex:       1;
+      display:     flex;
+      flex-direction: column;
+      overflow:   hidden;
+    }
+
     .cw-header {
       display:         flex;
       align-items:     center;
-      justify-content: space-between;
+      justify-content: flex-end;
       padding:         0 12px;
       height:          40px;
       background:      #0f0f0f;
@@ -97,22 +135,6 @@ export function injectStyles() {
       flex-shrink:     0;
     }
     .cw-header:active { cursor: grabbing }
-
-    .cw-tabs { display: flex; gap: 2px }
-
-    .cw-tab {
-      padding:       6px 14px;
-      background:    transparent;
-      border:        none;
-      color:         #666;
-      font-family:   monospace;
-      font-size:     12px;
-      cursor:        pointer;
-      border-bottom: 2px solid transparent;
-      transition:    all 0.15s;
-    }
-    .cw-tab:hover  { color: #aaa }
-    .cw-tab.active { color: #7ec8e3; border-bottom-color: #7ec8e3 }
 
     .cw-header-actions { display: flex; gap: 8px; align-items: center }
 
@@ -143,7 +165,7 @@ export function injectStyles() {
 
     .cw-body {
       flex:     1;
-      overflow: hidden;
+      overflow-y: auto;
     }
 
     /* ── Map view ─────────────────────────────── */

@@ -43,12 +43,13 @@ const uiCache = {
   recorderOutput: null as HTMLElement | null,
   networkBadge: null as HTMLElement | null,
   storageContainer: null as HTMLElement | null,
-  componentsContainer: null as HTMLElement | null
+  mapContainer: null as HTMLElement | null,
+  treeContainer: null as HTMLElement | null,
+  inspectorContainer: null as HTMLElement | null
 }
 
 let wrapperEl: HTMLElement | null = null
 let activeTab: string = 'state'
-let compActiveTab: string = 'map'
 let isDragging: boolean = false
 let dragOffsetX: number = 0
 let dragOffsetY: number = 0
@@ -377,17 +378,25 @@ const panelStyles = `
   #engine-devtools:active { cursor: grabbing; }
   .dt-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; padding-top: 24px; background: #000; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: grab; }
   .dt-header:active { cursor: grabbing; }
-  .dt-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; padding-top: 24px; background: #000; border-bottom: 1px solid rgba(255,255,255,0.05); }
-  .dt-header span { font-size: var(--dt-md); font-weight: 800; color: var(--dt-color-accent); letter-spacing: 1px; }
+  .dt-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #000; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .dt-header:active { cursor: grabbing; }
+  .dt-header span { font-size: var(--dt-lg); font-weight: 800; color: var(--dt-color-accent); letter-spacing: 1px; }
   .dt-close { background: none; border: none; color: var(--dt-color-muted); cursor: pointer; font-size: var(--dt-xl); }
   .dt-close:hover { color: #666; }
-  .dt-tabs { display: flex; background: #000; padding: 0 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-  .dt-tab { background: none; border: none; padding: 12px 14px; color: var(--dt-color-muted); font-size: var(--dt-sm); font-weight: 800; cursor: pointer; border-bottom: 2px solid transparent; text-transform: uppercase; letter-spacing: 0.5px; }
-  .dt-tab:hover { color: #777; }
-  .dt-tab.active { color: var(--dt-color-accent); border-bottom-color: var(--dt-color-accent); }
-  .dt-body { flex: 1; overflow-y: auto; padding: 12px; }
-  .dt-panel { display: none; }
-  .dt-panel.active { display: block; }
+  .dt-container { display: flex; flex: 1; overflow: hidden; }
+  .dt-sidebar { display: flex; flex-direction: column; background: #000; padding: 8px 0; border-right: 1px solid rgba(255,255,255,0.05); gap: 4px; }
+  .dt-sidebar .dt-tab { background: none; border: none; padding: 12px 14px; color: var(--dt-color-muted); font-size: var(--dt-xl); font-weight: 800; cursor: pointer; border-left: 2px solid transparent; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .dt-sidebar .dt-tab:hover { color: #777; background: rgba(255,255,255,0.03); }
+  .dt-sidebar .dt-tab.active { color: var(--dt-color-accent); border-left-color: var(--dt-color-accent); background: rgba(126,200,227,0.05); }
+  .dt-content { flex: 1; overflow-y: auto; padding: 12px; }
+  .dt-content .dt-panel { display: none; height: 100%; flex-direction: column; }
+  .dt-content .dt-panel.active { display: flex !important; }
+  .dt-panel-body { flex: 1; overflow-y: auto; padding: 12px; }
+  .dt-panel-header { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; gap: 8px; flex-shrink: 0; }
+  .dt-panel-header .dt-panel-title { font-size: var(--dt-sm); font-weight: 800; color: var(--dt-color-accent); letter-spacing: 0.5px; flex: 1; }
+  .dt-panel-actions { display: flex; gap: 4px; align-items: center; }
+  .dt-search { background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: var(--dt-color-text); font-size: var(--dt-xs); padding: 4px 8px; width: 120px; }
+  .dt-search:focus { outline: none; border-color: #4f8ef7; }
 
   .dt-scroll-box { background: var(--dt-color-bg-alt); border: 1px solid #1a1a1a; border-radius: 8px; padding: 12px; margin-top: 10px; min-height: 50px; }
   .dt-recorder-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 4px 0; }
@@ -433,20 +442,23 @@ const panelStyles = `
   .dt-clear:hover { background: #333; }
   .dt-panel-title { font-size: var(--dt-sm); font-weight: 900; color: var(--dt-color-muted); margin-bottom: 12px; }
 
-  /* Components tab */
-  #dt-components { display: none; flex-direction: column; height: 100%; }
-  #dt-components.active { display: flex; }
-  #dt-components .dt-comp-header { display: none; }
-  #dt-components.active .dt-comp-header { display: flex; gap: 4px; padding: 0 8px; margin-bottom: 8px; border-bottom: 1px solid #1a1a1a; align-items: center; }
-  #dt-components .dt-comp-tab { background: none; border: none; padding: 8px 12px; color: var(--dt-color-muted); font-size: var(--dt-sm); font-weight: 800; cursor: pointer; border-bottom: 2px solid transparent; }
-  #dt-components .dt-comp-tab:hover { color: #777; }
-  #dt-components.active .dt-comp-tab.active { color: var(--dt-color-accent); border-bottom-color: var(--dt-color-accent); }
-  #dt-components .dt-comp-inspect-btn { margin-left: auto; background: transparent; border: 1px solid #333; border-radius: 4px; color: var(--dt-color-muted); font-size: var(--dt-sm); padding: 4px 8px; cursor: pointer; }
-  #dt-components .dt-comp-inspect-btn:hover { border-color: #4f8ef7; color: var(--dt-color-accent); }
-  #dt-components .dt-comp-body { display: none; flex: 1; overflow: hidden; position: relative; }
-  #dt-components.active .dt-comp-body { display: block; }
-#dt-components.active .dt-comp-body .map-view { width: 100%; height: 100%; }
-  #dt-components.active .dt-comp-body .tree-view { width: 100%; height: 100%; }
+  /* Map tab */
+  #dt-map { display: none; }
+  #dt-map.active { display: block; height: 100%; }
+  #dt-map .map-view { width: 100%; height: 100%; }
+
+  /* Tree tab */
+  #dt-tree { display: none; }
+  #dt-tree.active { display: block; height: 100%; }
+
+  /* Inspector tab */
+  #dt-inspector { display: none; flex-direction: column; height: 100%; }
+  #dt-inspector.active { display: flex; }
+  #dt-inspector .dt-inspector-header { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid #1a1a1a; flex-shrink: 0; }
+  #dt-inspector .dt-comp-inspect-btn { background: transparent; border: 1px solid #333; border-radius: 4px; color: var(--dt-color-muted); font-size: var(--dt-sm); padding: 4px 8px; cursor: pointer; }
+  #dt-inspector .dt-comp-inspect-btn:hover { border-color: #4f8ef7; color: var(--dt-color-accent); }
+  #dt-inspector .dt-inspector-content { flex: 1; overflow-y: auto; }
+  #dt-inspector .inspector-view { height: 100%; }
 
   /* Map/Legend */
   .map-legend { position: absolute; bottom: 12px; left: 12px; display: flex; gap: 16px; }
@@ -509,52 +521,113 @@ export function toggleDevPanel() {
   const panel = document.createElement('div'); panel.id = 'engine-devtools'
   panel.innerHTML = `
     <div class="dt-drag-handle" id="dt-drag-handle"></div>
-    <div class="dt-header"><span>⚡ ENGINE DEVTOOLS</span><button class="dt-close">✕</button></div>
-    <div class="dt-tabs">
-      <button class="dt-tab active" data-tab="state">State</button>
-      <button class="dt-tab" data-tab="storage">Storage</button>
-      <button class="dt-tab" data-tab="logs">Logs</button>
-      <button class="dt-tab" data-tab="components">Components</button>
-      <button class="dt-tab" data-tab="tests">Tests</button>
-    </div>
-    <div class="dt-body">
-      <div class="dt-panel active" id="dt-state"></div>
-      <div class="dt-panel" id="dt-storage"></div>
-      <div class="dt-panel" id="dt-logs"></div>
-      <div class="dt-panel" id="dt-components">
-        <div class="dt-comp-header" id="dt-comp-tabs">
-          <button class="dt-comp-tab active" data-subtab="map">Map</button>
-          <button class="dt-comp-tab" data-subtab="tree">Tree</button>
-          <button class="dt-comp-tab" data-subtab="inspector">Inspector</button>
-          <button class="dt-comp-inspect-btn" id="dt-toggle-inspect">◎ Inspect</button>
-        </div>
-        <div class="dt-comp-body" id="dt-comp-body"></div>
+    <div class="dt-header"><span>⚡</span><button class="dt-close">✕</button></div>
+    <div class="dt-container">
+      <div class="dt-sidebar">
+        <button class="dt-tab active" data-tab="state" title="State">◎</button>
+        <button class="dt-tab" data-tab="storage" title="Storage">◉</button>
+        <button class="dt-tab" data-tab="logs" title="Logs">☰</button>
+        <button class="dt-tab" data-tab="map" title="Map">◈</button>
+        <button class="dt-tab" data-tab="tree" title="Tree">⬡</button>
+        <button class="dt-tab" data-tab="inspector" title="Inspector">🔍</button>
+        <button class="dt-tab" data-tab="tests" title="Tests">✓</button>
       </div>
-      <div class="dt-panel" id="dt-tests">
-         <div id="coverage-root" class="dt-panel-title"></div>
-         <div class="dt-recorder-bar">
-            <span class="dt-panel-title">AUTO-RECORDER</span>
-            <div style="display:flex; gap:8px; align-items:center">
-              <span id="network-badge" style="font-size:var(--dt-xs); font-weight:900; color:#f0a030; opacity:0.35; transition:opacity 0.2s">🌐 0 calls</span>
-              <button class="dt-record-btn" id="clear-snapshots-btn" style="background:#333; color:#aaa">CLEAR SNAPSHOTS</button>
-              <button class="dt-record-btn" id="record-btn">RECORD</button>
+      <div class="dt-content">
+        <div class="dt-panel active" id="dt-state">
+          <div class="dt-panel-header">
+            <span class="dt-panel-title">State</span>
+            <div class="dt-panel-actions">
+              <input class="dt-search" type="text" placeholder="Search..." />
             </div>
-         </div>
-         <div id="recorder-output" class="dt-scroll-box" style="display:none"><div style="color:var(--dt-color-muted); font-size:var(--dt-sm)">Perform actions on the page to generate code...</div></div>
-         <div id="tests-tree" style="margin-top:20px"></div>
+          </div>
+          <div class="dt-panel-body"></div>
+        </div>
+        <div class="dt-panel" id="dt-storage">
+          <div class="dt-panel-header">
+            <span class="dt-panel-title">Storage</span>
+            <div class="dt-panel-actions">
+              <input class="dt-search" type="text" placeholder="Search..." />
+            </div>
+          </div>
+          <div class="dt-panel-body"></div>
+        </div>
+        <div class="dt-panel" id="dt-logs">
+          <div class="dt-panel-header">
+            <span class="dt-panel-title">Logs</span>
+            <div class="dt-panel-actions">
+              <input class="dt-search" type="text" placeholder="Search..." />
+            </div>
+          </div>
+          <div class="dt-panel-body"></div>
+        </div>
+        <div class="dt-panel" id="dt-map">
+          <div class="dt-panel-header">
+            <span class="dt-panel-title">Map</span>
+            <div class="dt-panel-actions">
+              <input class="dt-search" type="text" placeholder="Search..." />
+            </div>
+          </div>
+          <div class="dt-panel-body"></div>
+        </div>
+        <div class="dt-panel" id="dt-tree">
+          <div class="dt-panel-header">
+            <span class="dt-panel-title">Tree</span>
+            <div class="dt-panel-actions">
+              <input class="dt-search" type="text" placeholder="Search..." />
+            </div>
+          </div>
+          <div class="dt-panel-body"></div>
+        </div>
+        <div class="dt-panel" id="dt-inspector">
+          <div class="dt-panel-header">
+            <span class="dt-panel-title">Inspector</span>
+            <div class="dt-panel-actions">
+              <input class="dt-search" type="text" placeholder="Search..." />
+              <button class="dt-comp-inspect-btn" id="dt-toggle-inspect">◎ Inspect</button>
+            </div>
+          </div>
+          <div class="dt-inspector-content dt-panel-body"></div>
+        </div>
+        <div class="dt-panel" id="dt-tests">
+           <div class="dt-panel-header">
+              <span class="dt-panel-title">Tests</span>
+              <div class="dt-panel-actions">
+                <input class="dt-search" type="text" placeholder="Search..." />
+              </div>
+            </div>
+            <div id="coverage-root" class="dt-panel-title"></div>
+           <div class="dt-recorder-bar">
+              <span class="dt-panel-title">AUTO-RECORDER</span>
+              <div style="display:flex; gap:8px; align-items:center">
+                <span id="network-badge" style="font-size:var(--dt-xs); font-weight:900; color:#f0a030; opacity:0.35; transition:opacity 0.2s">🌐 0 calls</span>
+                <button class="dt-record-btn" id="clear-snapshots-btn" style="background:#333; color:#aaa">CLEAR SNAPSHOTS</button>
+                <button class="dt-record-btn" id="record-btn">RECORD</button>
+              </div>
+           </div>
+           <div id="recorder-output" class="dt-scroll-box" style="display:none"><div style="color:var(--dt-color-muted); font-size:var(--dt-sm)">Perform actions on the page to generate code...</div></div>
+           <div id="tests-tree" style="margin-top:20px"></div>
+        </div>
       </div>
     </div>
   `
-  uiCache.stateContainer = panel.querySelector('#dt-state'); uiCache.logContainer = panel.querySelector('#dt-logs')
-  uiCache.storageContainer = panel.querySelector('#dt-storage');
-  uiCache.testContainer = panel.querySelector('#tests-tree'); uiCache.recorderOutput = panel.querySelector('#recorder-output')
+  uiCache.stateContainer = panel.querySelector('#dt-state .dt-panel-body')
+  uiCache.logContainer = panel.querySelector('#dt-logs .dt-panel-body')
+  uiCache.storageContainer = panel.querySelector('#dt-storage .dt-panel-body')
+  uiCache.testContainer = panel.querySelector('#tests-tree')
+  uiCache.recorderOutput = panel.querySelector('#recorder-output')
   uiCache.coverageContainer = panel.querySelector('#coverage-root')
   uiCache.networkBadge = panel.querySelector('#network-badge')
-  uiCache.componentsContainer = panel.querySelector('#dt-comp-body')
+  uiCache.mapContainer = panel.querySelector('#dt-map .dt-panel-body')
+  uiCache.treeContainer = panel.querySelector('#dt-tree .dt-panel-body')
+  uiCache.inspectorContainer = panel.querySelector('#dt-inspector .dt-inspector-content')
 
   const store = buildDevStore()
-  if (uiCache.componentsContainer) {
-    uiCache.componentsContainer.innerHTML = renderComponentsTab(store)
+  if (uiCache.mapContainer) uiCache.mapContainer.innerHTML = renderMap(store, { onHover: () => {} })
+  if (uiCache.treeContainer) uiCache.treeContainer.innerHTML = renderTree(store, {})
+  if (uiCache.inspectorContainer) {
+    const inspectBody = uiCache.inspectorContainer
+    inspectBody.innerHTML = renderInspector(store)
+    setTimeout(() => setupTreeHoverListeners(inspectBody as HTMLElement), 50)
   }
 
   renderTestStructure(); syncStateUI(); syncStorageUI(); syncLogUI(); syncCoverageUI()
@@ -595,40 +668,43 @@ export function toggleDevPanel() {
       activeTab = (tab as HTMLElement).dataset.tab!; panel.querySelectorAll('.dt-tab').forEach(t => t.classList.remove('active'))
       panel.querySelectorAll('.dt-panel').forEach(p => p.classList.remove('active')); tab.classList.add('active')
       panel.querySelector(`#dt-${activeTab}`)?.classList.add('active')
-    })
-  })
 
-  // Components tab sub-tabs
-  const compTabs = panel.querySelector('#dt-comp-tabs')
-  const compBody = panel.querySelector('#dt-comp-body')
-  compTabs?.querySelectorAll('.dt-comp-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      compActiveTab = (tab as HTMLElement).dataset.subtab!
-      compTabs.querySelectorAll('.dt-comp-tab').forEach(t => t.classList.remove('active'))
-      tab.classList.add('active')
       const store = buildDevStore()
-      if (compBody) compBody.innerHTML = renderComponentsTab(store)
-      if (compActiveTab === 'tree' && compBody) {
-        setTimeout(() => setupTreeHoverListeners(compBody as HTMLElement), 50)
+      if (activeTab === 'map' && uiCache.mapContainer) {
+        uiCache.mapContainer.innerHTML = renderMap(store, { onHover: () => {} })
       }
+      if (activeTab === 'tree' && uiCache.treeContainer) {
+        uiCache.treeContainer.innerHTML = renderTree(store, {})
+        setTimeout(() => setupTreeHoverListeners(uiCache.treeContainer as HTMLElement), 50)
+      }
+      if (activeTab === 'inspector' && uiCache.inspectorContainer) {
+        uiCache.inspectorContainer.innerHTML = renderInspector(store)
+        setTimeout(() => setupTreeHoverListeners(uiCache.inspectorContainer as HTMLElement), 50)
+      }
+      // Re-attach search listeners
+      attachSearchListeners()
     })
   })
 
-  const inspectBtn = compTabs?.querySelector('#dt-toggle-inspect') as HTMLElement | null
+  // Inspector inspect button
+  const inspectBtn = panel.querySelector('#dt-toggle-inspect') as HTMLElement | null
   inspectBtn?.addEventListener('click', () => {
     if (isInspecting()) {
       disableInspect()
-      inspectBtn.textContent = '◎ Inspect'
-      const store = buildDevStore()
-      if (compBody) compBody.innerHTML = renderComponentsTab(store)
     } else {
       enableInspect((comp) => {
-        compActiveTab = 'inspector'
-        compTabs?.querySelectorAll('.dt-comp-tab').forEach(t => {
-          t.classList.toggle('active', (t as HTMLElement).dataset.subtab === 'inspector')
+        activeTab = 'inspector'
+        panel.querySelectorAll('.dt-tab').forEach(t => {
+          t.classList.toggle('active', (t as HTMLElement).dataset.tab === 'inspector')
         })
+        panel.querySelectorAll('.dt-panel').forEach(p => p.classList.remove('active'))
+        panel.querySelector('#dt-inspector')?.classList.add('active')
         const store = buildDevStore()
-        if (compBody) compBody.innerHTML = renderComponentsTab(store, comp)
+        if (uiCache.inspectorContainer) {
+          uiCache.inspectorContainer.innerHTML = renderInspector(store, comp)
+        }
+      }, () => {
+        if (inspectBtn) inspectBtn.textContent = '◎ Inspect'
       })
       inspectBtn.textContent = '◎ Inspecting'
     }
@@ -910,13 +986,80 @@ function buildDevStore() {
   return { components, state }
 }
 
-function renderComponentsTab(store: any, selected?: string): string {
-  switch (compActiveTab) {
-    case 'map':       return renderMap(store, { onHover: () => {} })
-    case 'tree':      return renderTree(store, {})
-    case 'inspector': return renderInspector(store, selected)
-    default:          return ''
-  }
+function attachSearchListeners() {
+  document.querySelectorAll('.dt-search').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const query = (e.target as HTMLInputElement).value.toLowerCase()
+      const panel = (e.target as HTMLElement).closest('.dt-panel')
+      if (!panel) return
+
+      // Filter based on active tab
+      const tabId = panel.id
+      if (tabId === 'dt-state') filterStateItems(query)
+      if (tabId === 'dt-storage') filterStorageItems(query)
+      if (tabId === 'dt-logs') filterLogItems(query)
+      if (tabId === 'dt-map') filterMapItems(query)
+      if (tabId === 'dt-tree') filterTreeItems(query)
+      if (tabId === 'dt-inspector') filterInspectorItems(query)
+      if (tabId === 'dt-tests') filterTestItems(query)
+    })
+  })
+}
+
+function filterTestItems(query: string) {
+  document.querySelectorAll('#dt-tests .dt-test-item').forEach(item => {
+    const el = item as HTMLElement
+    const text = (el.textContent || '').toLowerCase()
+    el.style.display = text.includes(query) ? '' : 'none'
+  })
+}
+
+function filterStateItems(query: string) {
+  document.querySelectorAll('#dt-state .dt-row').forEach(row => {
+    const el = row as HTMLElement
+    const text = (el.textContent || '').toLowerCase()
+    el.style.display = text.includes(query) ? '' : 'none'
+  })
+}
+
+function filterStorageItems(query: string) {
+  document.querySelectorAll('#dt-storage .dt-row').forEach(row => {
+    const el = row as HTMLElement
+    const text = (el.textContent || '').toLowerCase()
+    el.style.display = text.includes(query) ? '' : 'none'
+  })
+}
+
+function filterLogItems(query: string) {
+  document.querySelectorAll('#dt-logs .dt-log-entry').forEach(entry => {
+    const el = entry as HTMLElement
+    const text = (el.textContent || '').toLowerCase()
+    el.style.display = text.includes(query) ? '' : 'none'
+  })
+}
+
+function filterMapItems(query: string) {
+  document.querySelectorAll('#dt-map .map-node').forEach(node => {
+    const el = node as HTMLElement
+    const text = (el.textContent || '').toLowerCase()
+    el.style.display = text.includes(query) ? '' : 'none'
+  })
+}
+
+function filterTreeItems(query: string) {
+  document.querySelectorAll('#dt-tree .tree-item').forEach(item => {
+    const el = item as HTMLElement
+    const text = (el.textContent || '').toLowerCase()
+    el.style.display = text.includes(query) ? '' : 'none'
+  })
+}
+
+function filterInspectorItems(query: string) {
+  document.querySelectorAll('#dt-inspector .inspector-section').forEach(section => {
+    const el = section as HTMLElement
+    const text = (el.textContent || '').toLowerCase()
+    el.style.display = text.includes(query) ? '' : 'none'
+  })
 }
 
 function highlightTreeItem(name: string, type: 'component' | 'state', store: any) {
