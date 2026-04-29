@@ -5,13 +5,23 @@ import SVGDemo from "./SVGDemo";
 import BindingDemo from "./BindingDemo";
 import PersistDemo from "./PersistDemo";
 import LazyDemo from "./LazyDemo";
-import { runDemoTest } from "./demo.test";
-import { runKitchenSinkSuite } from "./kitchen-sink.test";
-import { runStressTest } from "./stress.test";
-import { runAdvancedTest } from "./advanced.test";
+// import { runDemoTest } from "./demo.test";
+// import { runKitchenSinkSuite } from "./kitchen-sink.test";
+// import { runStressTest } from "./stress.test";
+// import { runAdvancedTest } from "./advanced.test";
 import { device } from "@engine";
+import { Todo } from "./TestingUI/Todo/Todo";
 
 export default function App() {
+  return (
+    <div>
+      <Todo />
+      <Temp />
+    </div>
+  );
+}
+
+export function Temp() {
   return (
     <div style={{ padding: "40px", fontFamily: "system-ui" }}>
       <Button />
