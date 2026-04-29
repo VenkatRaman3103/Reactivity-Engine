@@ -14,8 +14,8 @@ import { renderInspector,
          disableInspect,
          isInspecting }  from './devtools/views/Inspector'
 
-// @ts-ignore
-const isDev = import.meta.env.DEV
+// @ts-ignore - Always enable devtools for demo (even in production)
+const isDev = true
 
 const stateRegistry = new Map<string, Record<string, any>>()
 const history: any[] = []
@@ -386,9 +386,10 @@ const panelStyles = `
   .dt-close:hover { color: #666; }
   .dt-container { display: flex; flex: 1; overflow: hidden; }
   .dt-sidebar { display: flex; flex-direction: column; background: #000; padding: 8px 0; border-right: 1px solid rgba(255,255,255,0.05); gap: 4px; }
-  .dt-sidebar .dt-tab { background: none; border: none; padding: 12px 14px; color: var(--dt-color-muted); font-size: var(--dt-xl); font-weight: 800; cursor: pointer; border-left: 2px solid transparent; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .dt-sidebar .dt-tab { background: none; border: none; padding: 10px 14px; color: var(--dt-color-muted); cursor: pointer; border-left: 2px solid transparent; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
   .dt-sidebar .dt-tab:hover { color: #777; background: rgba(255,255,255,0.03); }
   .dt-sidebar .dt-tab.active { color: var(--dt-color-accent); border-left-color: var(--dt-color-accent); background: rgba(126,200,227,0.05); }
+  .dt-sidebar .dt-tab svg { width: 18px; height: 18px; }
   .dt-content { flex: 1; overflow-y: auto; padding: 12px; }
   .dt-content .dt-panel { display: none; height: 100%; flex-direction: column; }
   .dt-content .dt-panel.active { display: flex !important; }
@@ -524,15 +525,29 @@ export function toggleDevPanel() {
     <div class="dt-drag-handle" id="dt-drag-handle"></div>
     <div class="dt-header"><span>⚡</span><button class="dt-close">✕</button></div>
     <div class="dt-container">
-      <div class="dt-sidebar">
-        <button class="dt-tab active" data-tab="state" title="State">◎</button>
-        <button class="dt-tab" data-tab="storage" title="Storage">◉</button>
-        <button class="dt-tab" data-tab="logs" title="Logs">☰</button>
-        <button class="dt-tab" data-tab="map" title="Map">◈</button>
-        <button class="dt-tab" data-tab="tree" title="Tree">⬡</button>
-        <button class="dt-tab" data-tab="inspector" title="Inspector">🔍</button>
-        <button class="dt-tab" data-tab="tests" title="Tests">✓</button>
-      </div>
+       <div class="dt-sidebar">
+         <button class="dt-tab active" data-tab="state" title="State">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+         </button>
+         <button class="dt-tab" data-tab="storage" title="Storage">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7.5H3v-3a1 1 0 011-1h16a1 1 0 011 1v3zM21 16.5H3v-3h18v3zM21 19a1 1 0 01-1 1H4a1 1 0 01-1-1v-3h18v3z"/></svg>
+         </button>
+         <button class="dt-tab" data-tab="logs" title="Logs">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h6"/></svg>
+         </button>
+         <button class="dt-tab" data-tab="map" title="Map">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><line x1="12" y1="13" x2="6" y2="15"/><line x1="12" y1="13" x2="18" y2="15"/></svg>
+         </button>
+         <button class="dt-tab" data-tab="tree" title="Tree">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M5 8h14l-2 6H7l-2-6zM7 14h10l-1 8H8l-1-8z"/></svg>
+         </button>
+         <button class="dt-tab" data-tab="inspector" title="Inspector">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+         </button>
+         <button class="dt-tab" data-tab="tests" title="Tests">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+         </button>
+       </div>
       <div class="dt-content">
         <div class="dt-panel active" id="dt-state">
           <div class="dt-panel-header">
@@ -1064,10 +1079,8 @@ function setupTreeHoverListeners(container: HTMLElement) {
   })
 }
 
-// @ts-ignore
-if (import.meta.env.DEV) {
-  window.addEventListener('keydown', e => {
-    if (e.ctrlKey && e.shiftKey && e.key === 'E') toggleDevPanel()
-  })
-}
+// @ts-ignore - Always enable Ctrl+Shift+E for demo (even in production)
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'E') toggleDevPanel()
+})
 

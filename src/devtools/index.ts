@@ -19,8 +19,7 @@ let winX        = 40
 let winY        = 40
 
 export function initDevTools() {
-  if (!import.meta.env.DEV) return
-
+  // Always enable for demo (even in production)
   injectStyles()
   createLauncherButton()
 
@@ -41,14 +40,16 @@ function createLauncherButton() {
   launcher.innerHTML = `
     <div class="launcher-menu" id="engine-launcher-menu">
       <button class="launcher-item" id="engine-open-devtools">
-        ⚡ DevTools
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        DevTools
       </button>
       <button class="launcher-item" id="engine-open-components">
-        🔗 Components
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        Components
       </button>
     </div>
     <button class="launcher-btn" id="engine-launcher-btn">
-      ◈
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><line x1="12" y1="13" x2="6" y2="15"/><line x1="12" y1="13" x2="18" y2="15"/></svg>
     </button>
   `
 
@@ -115,11 +116,17 @@ function renderWindow() {
     <div class="cw-container">
       <div class="cw-sidebar">
         <button class="cw-tab ${activeTab === 'map'      ? 'active' : ''}"
-          data-tab="map" title="Map">◈</button>
+          data-tab="map" title="Map">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><line x1="12" y1="13" x2="6" y2="15"/><line x1="12" y1="13" x2="18" y2="15"/></svg>
+        </button>
         <button class="cw-tab ${activeTab === 'tree'     ? 'active' : ''}"
-          data-tab="tree" title="Tree">⬡</button>
+          data-tab="tree" title="Tree">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M5 8h14l-2 6H7l-2-6zM7 14h10l-1 8H8l-1-8z"/></svg>
+        </button>
         <button class="cw-tab ${activeTab === 'inspector'? 'active' : ''}"
-          data-tab="inspector" title="Inspector">🔍</button>
+          data-tab="inspector" title="Inspector">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
       </div>
       <div class="cw-content">
         <div class="cw-header" id="cw-drag-handle">

@@ -46,21 +46,13 @@ export {
 export * from "./utils/index";
 export * from "./lazy";
 
-if (import.meta.env.DEV) {
-  Promise.all([
-    import('./hmr').then(m      => m.initHMR()),
-    import('./devtools').then(m => m.initDevTools()),
-    // Register example suites
-    import('../example/demo.test'),
-    import('../example/kitchen-sink.test'),
-    import('../example/advanced.test'),
-    import('../example/network.test'),
-    import('../example/snapshot.test'),
-    import('../example/viewport.test'),
-    import('../example/lazy-demo.test'),
-    import('../example/form.test')
-  ])
-}
+// Always enable devtools for demo (even in production)
+Promise.all([
+  import('./hmr').then(m      => m.initHMR()),
+  import('./devtools').then(m => m.initDevTools()),
+  // Register example suites for demo
+  import('../example/kitchen-sink.test'),
+])
 
 
 // trigger vite reload
