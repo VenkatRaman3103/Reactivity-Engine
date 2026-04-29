@@ -1,105 +1,293 @@
-import { count, step, theme, transientData, increment, decrement, reset, toggleTheme, setStep, setTransientData } from './persist.state'
+import {
+  count,
+  step,
+  transientData,
+  increment,
+  decrement,
+  reset,
+  setStep,
+  setTransientData,
+} from "./persist.state";
 
 export default function PersistDemo() {
-  const isDark = theme === 'dark'
-  
   return (
-    <div style={{
-      padding: '24px',
-      borderRadius: '12px',
-      background: isDark ? '#1a1a1a' : '#ffffff',
-      color: isDark ? '#ffffff' : '#000000',
-      border: `1px solid ${isDark ? '#333' : '#eee'}`,
-      transition: 'all 0.3s ease'
-    }}>
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: '18px' }}>State Persistence Demo</h3>
-        <button 
-          onClick={toggleTheme}
-          style={{
-            background: isDark ? '#333' : '#f0f0f0',
-            color: isDark ? '#fff' : '#000',
-            border: 'none',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            cursor: 'pointer'
-          }}
-        >
-          {isDark ? '🌙 Dark Mode' : '☀️ Light Mode'}
-        </button>
+    <div class="demo-module">
+      <div class="demo-doc-pane">
+        <div class="demo-section-label">Documentation</div>
+        <div style={{ marginBottom: "40px" }}>
+          <h3
+            style={{
+              color: "var(--text-main)",
+              marginBottom: "16px",
+              fontSize: "20px",
+            }}
+          >
+            Zero-Config Persistence
+          </h3>
+          <p
+            style={{
+              color: "var(--text-dim)",
+              lineHeight: "1.7",
+              marginBottom: "16px",
+            }}
+          >
+            The <strong>persist</strong> function provides automatic localStorage
+            persistence with zero configuration. Simply wrap your signals with the
+            persist function, and they'll automatically sync with localStorage.
+          </p>
+          <p
+            style={{
+              color: "var(--text-dim)",
+              lineHeight: "1.7",
+              marginBottom: "24px",
+            }}
+          >
+            This means your users' state survives page refreshes without any
+            additional code. Perfect for user preferences, form drafts, and
+            application state.
+          </p>
+
+          <h4
+            style={{
+              color: "var(--text-main)",
+              marginBottom: "12px",
+              fontSize: "16px",
+            }}
+          >
+            Selective Persistence
+          </h4>
+          <p
+            style={{
+              color: "var(--text-dim)",
+              lineHeight: "1.7",
+              marginBottom: "16px",
+            }}
+          >
+            Not all state should be persisted. Use the <code>omit</code> option
+            to exclude transient state from localStorage, keeping only the
+            essential data that should survive page reloads.
+          </p>
+
+          <div class="tip-card" style={{ marginBottom: "24px" }}>
+            <strong>Versioning:</strong> Include a version number to handle
+            schema changes. When the version updates, old persisted state is
+            automatically invalidated and fresh state is used.
+          </div>
+        </div>
       </div>
 
-      <p style={{ margin: '0 0 16px 0', fontSize: '14px', opacity: 0.8 }}>
-        Open DevTools (Ctrl+Shift+E) and check the <strong>Storage</strong> tab. Change values below, then refresh the page.
-      </p>
+      <div class="demo-demo-pane">
+        <div class="demo-section-label">Live Example</div>
+        <div class="demo-interactive">
+          <div class="monitor-card">
+            <div class="monitor-header">
+              <div>
+                <div class="monitor-tag">
+                  <div class="monitor-pulse"></div>
+                  <span class="monitor-tag-text">Persistence Monitor</span>
+                </div>
+                <h3 class="monitor-title">State Persistence Demo</h3>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button class="demo-btn" onClick={() => reset()}>
+                  Reset
+                </button>
+              </div>
+            </div>
 
-      <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '200px' }}>
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.5, marginBottom: '8px' }}>Counter</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <button 
-                onClick={decrement}
-                style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: '#ff5f56', color: '#fff', fontSize: '18px', cursor: 'pointer' }}
-              >-</button>
-              <span style={{ fontSize: '32px', fontWeight: 'bold' }}>{count}</span>
-              <button 
-                onClick={increment}
-                style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', background: '#4eca8b', color: '#fff', fontSize: '18px', cursor: 'pointer' }}
-              >+</button>
+            <div class="monitor-grid">
+              <div>
+                <div class="monitor-label">PERSISTED COUNT</div>
+                <div class="monitor-value large">{count}</div>
+              </div>
+              <div>
+                <div class="monitor-label">STEP SIZE</div>
+                <div class="monitor-value accent">{step}</div>
+              </div>
+              <div>
+                <div class="monitor-label">STATUS</div>
+                <div class="monitor-value accent">ACTIVE</div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: "24px",
+                paddingTop: "24px",
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              <div class="monitor-label" style={{ marginBottom: "12px" }}>
+                COUNTER CONTROLS
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "16px",
+                  marginBottom: "16px",
+                }}
+              >
+                <button
+                  class="demo-btn"
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    padding: 0,
+                  }}
+                  onClick={() => decrement()}
+                >
+                  -
+                </button>
+                <button
+                  class="demo-btn primary"
+                  style={{ flex: 1 }}
+                  onClick={() => increment()}
+                >
+                  Increment by {step}
+                </button>
+                <button
+                  class="demo-btn"
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    padding: 0,
+                  }}
+                  onClick={() => increment()}
+                >
+                  +
+                </button>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    color: "var(--text-dim)",
+                    fontSize: "12px",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Step Size (persisted to localStorage)
+                </label>
+                <input
+                  type="range"
+                  class="demo-input"
+                  min="1"
+                  max="10"
+                  value={() => step}
+                  onInput={(e) => setStep(e.target.value)}
+                  style={{ width: "100%", cursor: "pointer" }}
+                />
+                <div
+                  style={{
+                    textAlign: "right",
+                    fontSize: "12px",
+                    color: "var(--text-dim)",
+                  }}
+                >
+                  Current: {step}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: "24px",
+                paddingTop: "24px",
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              <div class="monitor-label" style={{ marginBottom: "12px" }}>
+                OMITTED STATE (NOT PERSISTED)
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    color: "var(--text-dim)",
+                    fontSize: "12px",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Transient Data (resets on refresh)
+                </label>
+                <input
+                  type="text"
+                  class="demo-input"
+                  value={() => transientData}
+                  onInput={(e) => setTransientData(e.target.value)}
+                  placeholder="Type something..."
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: "12px",
+                  background: "var(--accent-soft, rgba(79, 142, 247, 0.1))",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  color: "var(--text-dim)",
+                }}
+              >
+                Current Value:{" "}
+                <strong style={{ color: "var(--text-main)" }}>
+                  {transientData}
+                </strong>
+                <div style={{ marginTop: "8px", fontSize: "11px" }}>
+                  This value is omitted from persistence and will reset on page
+                  refresh.
+                </div>
+              </div>
             </div>
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.5, marginBottom: '8px' }}>Step Size</div>
-            <input 
-              type="range" 
-              min="1" 
-              max="10" 
-              bind:value={step} 
-              style={{ width: '100%', cursor: 'pointer' }}
-            />
-            <div style={{ textAlign: 'right', fontSize: '12px', fontWeight: 'bold' }}>Current Step: {step}</div>
+          <div class="tip-card">
+            <strong>Pro Tip:</strong> Open DevTools (Ctrl+Shift+E) and check the
+            <strong>Storage</strong> tab. Change values above, then refresh the
+            page to see persistence in action!
           </div>
-          
-          <button 
-            onClick={reset}
-            style={{
-              background: 'transparent',
-              color: isDark ? '#7ec8e3' : '#0066cc',
-              border: `1px solid ${isDark ? '#7ec8e3' : '#0066cc'}`,
-              padding: '6px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600
-            }}
-          >
-            Reset
-          </button>
         </div>
 
-        <div style={{ flex: 1, minWidth: '200px', padding: '16px', background: isDark ? '#000' : '#f9f9f9', borderRadius: '8px' }}>
-          <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.5, marginBottom: '12px' }}>Omitted State (Resets on Refresh)</div>
-          <input 
-            type="text" 
-            bind:value={transientData}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: `1px solid ${isDark ? '#444' : '#ccc'}`,
-              background: isDark ? '#222' : '#fff',
-              color: isDark ? '#fff' : '#000',
-              marginBottom: '8px'
-            }}
-            placeholder="Type something..."
-          />
-          <div style={{ fontSize: '11px', opacity: 0.7 }}>
-            Current Value: <strong>{transientData}</strong>
+        <div class="demo-section" style={{ marginTop: "40px" }}>
+          <div class="demo-section-label">State Definition</div>
+          <div class="demo-code-block">
+            <div class="demo-code-header">
+              <span>persist.state.ts</span>
+            </div>
+            <div class="demo-code-content">
+              <span class="highlight-comment">
+                // Define signals with persistence
+              </span>
+              {"\n"}
+              <span class="highlight-keyword">export let</span> count = 0;
+              {"\n"}
+              <span class="highlight-keyword">export let</span> step = 1;
+              {"\n"}
+              <span class="highlight-keyword">export let</span> transientData ={" "}
+              <span class="highlight-string">'this will not stick'</span>;
+              {"\n\n"}
+              <span class="highlight-comment">// Wrap with persist function</span>
+              {"\n"}
+              persist(<span class="highlight-string">'persist-demo'</span>, {"{"}
+              {"\n"}
+              {"  "}count, step, transientData{"\n"}
+              {"}"}, {"{"}
+              {"\n"}
+              {"  "}<span class="highlight-keyword">omit</span>: [<span class="highlight-string">
+                'transientData'
+              </span>],
+              {"\n"}
+              {"  "}<span class="highlight-keyword">version</span>: 1{"\n"}
+              {"}"});
+            </div>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
