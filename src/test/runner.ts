@@ -346,6 +346,11 @@ async function runStep(step: Step, speed: number, context: { suiteName: string, 
       if ((step as any)._times)  m.times((step as any)._times)
       break
     }
+
+    case 'run': {
+      await step.fn()
+      break
+    }
   }
 }
 

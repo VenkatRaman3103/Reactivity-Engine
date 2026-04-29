@@ -73,10 +73,12 @@ async function initD3Graph(store: any, opts: any) {
   // links — component reads state
   store.components.forEach((comp: any) => {
     comp.reads.forEach((stateFile: string) => {
-      links.push({
-        source: comp.name,
-        target: stateFile
-      })
+      if (nodeMap.has(comp.name) && nodeMap.has(stateFile)) {
+        links.push({
+          source: comp.name,
+          target: stateFile
+        })
+      }
     })
   })
 

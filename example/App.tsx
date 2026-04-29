@@ -11,6 +11,7 @@ import LazyDemo from "./LazyDemo";
 // import { runAdvancedTest } from "./advanced.test";
 import { device } from "@engine";
 import { Todo } from "./TestingUI/Todo/Todo";
+import LoginForm from "./LoginForm";
 
 export default function App() {
   return (
@@ -101,6 +102,25 @@ export function Temp() {
       <div style={{ borderTop: "2px solid #eee", paddingTop: "40px" }}>
         <TestComponent />
         <KitchenSink />
+      </div>
+
+      {/* Form Validation Demo */}
+      <div
+        style={{
+          borderTop: "2px solid #eee",
+          paddingTop: "40px",
+          marginTop: "40px",
+        }}
+      >
+        <div style={{ marginBottom: "32px" }}>
+          <h2 style={{ margin: "0 0 6px", fontSize: "20px", color: "#111" }}>
+            Form Validation
+          </h2>
+          <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>
+            Compiler-powered form fields with built-in validation rules and reactivity natively.
+          </p>
+        </div>
+        <LoginForm />
       </div>
 
       {/* Two-Way Binding Demo */}

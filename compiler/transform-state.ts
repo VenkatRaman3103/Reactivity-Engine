@@ -8,7 +8,7 @@ export interface StateTransformResult {
 
 export async function transformState(code: string, currentFilePath: string): Promise<StateTransformResult> {
   const regex =
-    /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+\.state(?:\.ts|\.tsx)?)['"]/g;
+    /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+\.state(?:\.ts|\.tsx)?|[^'"]+\.form(?:\.ts)?)['"]/g;
 
   // regex for layout file imports — NEW
   const layoutRegex =
@@ -65,8 +65,8 @@ export async function transformState(code: string, currentFilePath: string): Pro
     });
   }
 
-  // also transform dynamic imports: import('...state')
-  const dynRegex = /import\s*\(['"]([^'"]+\.state(?:\.ts|\.tsx)?)['"]\)/g;
+  // also transform dynamic imports: import('...state' or '...form')
+  const dynRegex = /import\s*\(['"]([^'"]+\.state(?:\.ts|\.tsx)?|[^'"]+\.form(?:\.ts)?)['"]\)/g;
   let dynMatch: RegExpExecArray | null;
   while ((dynMatch = dynRegex.exec(result)) !== null) {
     const full = dynMatch[0];

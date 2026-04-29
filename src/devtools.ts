@@ -8,6 +8,7 @@ import { instances }       from './component'
 import { stateModules }    from './memo'
 import { renderMap }       from './devtools/views/Map'
 import { renderTree }      from './devtools/views/Tree'
+import { buildDevStore }   from './devtools/store'
 import { renderInspector,
          enableInspect,
          disableInspect,
@@ -932,59 +933,7 @@ function formatSelector(selector: any): string {
   return String(selector.value)
 }
 
-function buildDevStore() {
-  const staticTree = (window as any).__engineStaticTree
-
-  const components: any[] = (staticTree?.components ?? [])
-    .map((comp: any) => {
-      const reads: string[] = []
-      componentRegistry.forEach((comps, stateFile) => {
-        if (comps.has(comp.name)) reads.push(stateFile)
-      })
-
-      const stateValues: Record<string, Record<string, any>> = {}
-      reads.forEach(file => {
-        const mod = stateModules.get(file)
-        if (!mod) return
-        stateValues[file] = {}
-        Object.keys(mod).forEach(k => {
-          if (typeof mod[k] !== 'function') {
-            stateValues[file][k] = mod[k]
-          }
-        })
-      })
-
-      return {
-        name:        comp.name,
-        file:        comp.file,
-        renders:     comp.renders,
-        renderedBy:  comp.renderedBy,
-        reads,
-        mounted:     instances.has(comp.name),
-        stateValues
-      }
-    })
-
-  const state: any[] = []
-  stateModules.forEach((mod, file) => {
-    const shortName = file.split('/').pop()?.replace('.state.ts', '') ?? file
-    const usedBy: string[] = []
-
-    componentRegistry.get(file)?.forEach(comp => {
-      if (!usedBy.includes(comp)) usedBy.push(comp)
-    })
-
-    const exports = Object.keys(mod).map(name => ({
-      name,
-      value:      typeof mod[name] === 'function' ? null : mod[name],
-      isFunction: typeof mod[name] === 'function'
-    }))
-
-    state.push({ file, shortName, exports, usedBy })
-  })
-
-  return { components, state }
-}
+// buildDevStore removed, imported instead
 
 function attachSearchListeners() {
   document.querySelectorAll('.dt-search').forEach(input => {

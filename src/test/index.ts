@@ -13,6 +13,7 @@ export type Step =
   | { type: 'focus',   selector: Selector }
   | { type: 'viewport', width: number, height: number }
   | { type: 'mock',    url: string | RegExp, expected: any, status?: number, delay?: number }
+  | { type: 'run',     fn: () => any | Promise<any> }
 
 export const find = {
   text:  (value: string): Selector => ({ type: 'text', value }),
@@ -78,6 +79,10 @@ export { setViewport, resetViewport } from './viewport'
 
 export function viewport(width: number, height: number): Step {
   return { type: 'viewport', width, height }
+}
+
+export function run(fn: () => any | Promise<any>): Step {
+  return { type: 'run', fn }
 }
 
 export function mock(url: string | RegExp, response: any): any {

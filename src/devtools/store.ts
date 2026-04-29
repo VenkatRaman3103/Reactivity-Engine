@@ -36,7 +36,7 @@ export function buildDevStore(): DevStore {
       // which state files does this component read
       const reads: string[] = []
       componentRegistry.forEach((comps, stateFile) => {
-        if (comps.has(comp.name)) reads.push(stateFile)
+        if (stateModules.has(stateFile) && comps.has(comp.name)) reads.push(stateFile)
       })
 
       // live state values for this component

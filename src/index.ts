@@ -8,6 +8,7 @@ export * from "./ref";
 export * from "./scheduler";
 export * from "./state";
 export * from "./layout";
+export * from "./form/index";
 export * from "./test/index";
 export { whenever, when } from "./when";
 export { persist, clearPersisted,
@@ -56,7 +57,8 @@ if (import.meta.env.DEV) {
     import('../example/network.test'),
     import('../example/snapshot.test'),
     import('../example/viewport.test'),
-    import('../example/lazy-demo.test')
+    import('../example/lazy-demo.test'),
+    import('../example/form.test')
   ])
 }
 

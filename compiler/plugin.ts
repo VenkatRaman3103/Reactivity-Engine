@@ -4,6 +4,7 @@ import { transformJSX } from "./transform-jsx";
 import { transformStateFile } from "./transform-state-file";
 import { transformWhenConditions } from "./transform-when";
 import { transformBind } from "./transform-bind";
+import { transformForm } from "./transform-form";
 import { resolve, isAbsolute } from "path";
 import { fileURLToPath } from "url";
 import { buildComponentTree } from './tree-sitter';
@@ -147,13 +148,22 @@ export function engine(): Plugin {
       const cleanId = id.split("?")[0];
       const isTSX = cleanId.endsWith(".tsx");
       const isTS = cleanId.endsWith(".ts");
-      const isState = cleanId.includes(".state.");
+      const isState = cleanId.includes(".state.") || cleanId.endsWith(".form.ts");
       const isLayout = cleanId.endsWith(".layout.tsx");
-      if (!isTSX && !isTS && !isLayout) return null;
+      const isForm = cleanId.endsWith(".form.ts");
+      if (!isTSX && !isTS && !isLayout && !isForm) return null;
 
       try {
         let transformedCode = code;
         let anyChanges = false;
+
+        if (isForm) {
+          const formCode = transformForm(transformedCode, cleanId);
+          if (formCode !== transformedCode) {
+            transformedCode = formCode;
+            anyChanges = true;
+          }
+        }
 
         // step 0 — transform whenever/when conditions (DO THIS FIRST)
         if (!cleanId.includes('src/when.ts')) {

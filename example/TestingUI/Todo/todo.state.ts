@@ -11,12 +11,16 @@ whenever(todoList, () => {
 });
 
 async function fn() {
-  const res = await fetch("https://jsonplaceholder.typicode.com/todos/1");
-  const data = await res.json();
-
-  title = data.title;
-
-  console.log(data);
+  try {
+    const res = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+    if (res.ok) {
+      const data = await res.json();
+      title = data.title;
+      console.log(data);
+    }
+  } catch (e) {
+    console.warn("Could not fetch todo, API might be unreachable.", e);
+  }
 }
 
 fn();

@@ -106,8 +106,9 @@ export class Signal<T> {
   }
 }
 
-export function createSignal<T>(initialValue: T): [() => T, (v: T) => void] {
+export function createSignal<T>(initialValue: T, label?: string): [() => T, (v: T) => void] {
   const s = new Signal(initialValue);
+  if (label) s.label = label;
   return [
     () => s.value,
     (v: T) => { s.value = v; }
