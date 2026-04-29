@@ -3,9 +3,9 @@ import { h } from '@engine/dom'
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-const placeholderStyle = "min-height: 40px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ccc; color: #666; font-size: 14px; display: flex; align-items: center; justify-content: center;"
-const contentStyle = { minHeight: '40px', padding: '12px', background: '#e3f2fd', borderRadius: '8px', color: '#1976d2', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }
-const btnStyle = { padding: '8px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', marginRight: '8px', fontSize: '13px', fontWeight: 600 }
+const placeholderStyle = "min-height: 40px; padding: 12px; background: var(--surface); border-radius: 8px; border: 1px dashed var(--border); color: var(--text-dim); font-size: 14px; display: flex; align-items: center; justify-content: center;"
+const contentStyle = { minHeight: '40px', padding: '12px', background: 'var(--accent-soft)', borderRadius: '8px', color: 'var(--accent)', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }
+const btnStyle = { padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', marginRight: '8px', fontSize: '13px', fontWeight: 600 }
 
 const BasicDummy = () => <div id="lazy-basic-content" style={contentStyle}>Basic Loaded</div>
 const BasicLazy = lazy(async () => {
@@ -20,7 +20,7 @@ const ErrorLazy = lazy(async () => {
   throw new Error('Network failure')
 }, {
   loading: () => <div id="lazy-error-loading" style={placeholderStyle}>Loading...</div>,
-  error: (e) => <div id="lazy-error-content" style={{...contentStyle, background: '#ffebee', color: '#c62828'}}>Failed: {e.message}</div>
+  error: (e) => <div id="lazy-error-content" style={{...contentStyle, background: 'rgba(255,235,238,0.5)', color: 'var(--error)'}}>Failed: {e.message}</div>
 })
 
 const PreloadDummy = () => <div id="lazy-preload-content" style={contentStyle}>Preload Loaded</div>
@@ -42,7 +42,7 @@ export default function LazyDemo() {
   const [showError, setShowError] = createSignal(false)
   const [showPreload, setShowPreload] = createSignal(false)
   const [showSuspense, setShowSuspense] = createSignal(false)
-  
+
   const resetAll = () => {
     setShowBasic(false)
     setShowError(false)
@@ -54,33 +54,33 @@ export default function LazyDemo() {
     <div style={{ display: 'grid', gap: '24px', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
       <button id="btn-reset-lazy" style={{ display: 'none' }} onClick={resetAll}>Reset</button>
 
-      <div style={{ padding: '20px', background: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Basic Lazy Load</h3>
+      <div style={{ padding: '20px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: 'var(--text-main)' }}>Basic Lazy Load</h3>
         <div style={{ marginBottom: '16px' }}>
           <button id="btn-basic" style={btnStyle} onClick={() => setShowBasic(true)}>Show Basic</button>
         </div>
         {() => showBasic() ? <BasicLazy /> : null}
       </div>
 
-      <div style={{ padding: '20px', background: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Error Handling</h3>
+      <div style={{ padding: '20px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: 'var(--text-main)' }}>Error Handling</h3>
         <div style={{ marginBottom: '16px' }}>
           <button id="btn-error" style={btnStyle} onClick={() => setShowError(true)}>Show Error</button>
         </div>
         {() => showError() ? <ErrorLazy /> : null}
       </div>
 
-      <div style={{ padding: '20px', background: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Preloading</h3>
+      <div style={{ padding: '20px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: 'var(--text-main)' }}>Preloading</h3>
         <div style={{ marginBottom: '16px' }}>
-          <button id="btn-preload-action" style={{...btnStyle, background: '#f0f0f0', color: '#111'}} onClick={() => PreloadLazy.preload()}>Preload Now</button>
+          <button id="btn-preload-action" style={{...btnStyle, background: 'var(--bg-card)', color: 'var(--text-main)'}} onClick={() => PreloadLazy.preload()}>Preload Now</button>
           <button id="btn-preload-show" style={btnStyle} onClick={() => setShowPreload(true)}>Show Preloaded</button>
         </div>
         {() => showPreload() ? <PreloadLazy /> : null}
       </div>
 
-      <div style={{ padding: '20px', background: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>With Suspense</h3>
+      <div style={{ padding: '20px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: 'var(--text-main)' }}>With Suspense</h3>
         <div style={{ marginBottom: '16px' }}>
           <button id="btn-suspense" style={btnStyle} onClick={() => setShowSuspense(true)}>Show Suspense</button>
         </div>

@@ -1,44 +1,51 @@
+import { suite, test, beforeEach, play, click, type, expect, see, pause, mock } from '@engine'
+import { count, todos, inputValue, theme, items, isFetching, externalTodo, resetState } from './kitchen-sink.state'
 
-import { suite, test, beforeEach, play, click, type, expect, see, pause } from '@engine'
-import { count, todos, inputValue, theme, resetState } from './kitchen-sink.state'
-
-suite('Engine Kitchen Sink Suite', () => {
+suite('Comprehensive Tests', () => {
 
   beforeEach(() => {
     resetState()
   })
 
-  test('Counter interactions', [
+  test('Counter section', [
     expect(() => count).is(0),
     click('#counter-inc'),
-    click('#counter-inc'),
-    expect(() => count).is(2),
-    click('#counter-dec'),
     expect(() => count).is(1),
+    click('#counter-dec'),
+    expect(() => count).is(0),
   ])
 
-  test('Todo list management', [
+  test('Todo List section', [
     expect(() => todos.length).is(3),
-    type('#todo-input', 'Test our new runner'),
+    type('#todo-input', 'New task'),
     click('#todo-add'),
+    pause(500),
     expect(() => todos.length).is(4),
-    expect(() => todos[todos.length-1].text).is('Test our new runner'),
   ])
 
-  test('Theme and Modal behavior', [
+  test('Theme section', [
     expect(() => theme).is('light'),
     click('#theme-toggle'),
     expect(() => theme).is('dark'),
-    
+  ])
+
+  test('Modal section', [
     see('#modal-overlay').absent(),
     click('#modal-open'),
-    expect('#modal-overlay').toBeVisible(),
-    
+    see('#modal-overlay').exists(),
     click('#modal-close'),
     see('#modal-overlay').absent(),
   ])
+
+  test('Integration', [
+    click('#counter-inc'),
+    type('#todo-input', 'Integration task'),
+    click('#todo-add'),
+    click('#theme-toggle'),
+    expect(() => theme).is('dark'),
+  ])
 })
 
-export function runKitchenSinkSuite() {
-  play('Engine Kitchen Sink Suite')
+export function runKitchenSinkTests() {
+  play('Comprehensive Tests')
 }

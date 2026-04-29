@@ -59,7 +59,7 @@ export async function play(
 
 async function runStandalone(name: string, steps: Step[], options: PlayOptions) {
   const speed = SPEEDS[options.speed ?? 'normal']
-  const overlay = !options.devToolsReporter ? showTestOverlay(name, steps) : null
+  const overlay = options.devToolsReporter ? showTestOverlay(name, steps) : null
   const results: StepResult[] = []
   const start = performance.now()
 

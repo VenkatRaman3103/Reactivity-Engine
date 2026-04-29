@@ -16,8 +16,9 @@ export function increment() { count++ }
 export function decrement() { count-- }
 
 export function addTodo(text: string) {
-  if (!text) return
-  todos = [...todos, { id: Date.now(), text, completed: false }]
+  const trimmed = text.trim()
+  if (!trimmed) return
+  todos = [...todos, { id: Date.now(), text: trimmed, completed: false }]
   inputValue = ''
 }
 

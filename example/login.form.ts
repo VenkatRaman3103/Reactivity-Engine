@@ -9,8 +9,8 @@ import {
 import { whenever } from "@engine/index";
 import type { FieldState } from "@engine/index";
 
-export let email: FieldState;
-export let password: FieldState;
+export let email = field('', required(), minLength(5, 'Must be at least 5 characters'))
+export let password = field('', required(), minLength(8, 'Must be at least 8 characters'))
 export let isValid = false;
 export let submitStatus = "";
 

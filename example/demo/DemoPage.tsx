@@ -18,6 +18,22 @@ import AsyncDemo from "./AsyncDemo";
 import StateDemo from "./StateDemo";
 import WhenDemo from "./WhenDemo";
 import LayoutTest from "../LayoutTest";
+import KitchenSink from "../KitchenSink";
+
+import FormDemo from "./FormDemo";
+import BindingDemo from "./BindingDemo";
+import PersistDemo from "../PersistDemo";
+import LazyLoadDemo from "./LazyLoadDemo";
+import SVGDemo from "./SVGDemo";
+import StylingDemo from "./StylingDemo";
+import TestingDemo from "./TestingDemo";
+import DevToolsDemo from "./DevToolsDemo";
+import RoutingDemo from "./RoutingDemo";
+import UtilitiesDemo from "./UtilitiesDemo";
+import PortalDemo from "./PortalDemo";
+import MemoDemo from "./MemoDemo";
+import RefDemo from "./RefDemo";
+import SlotDemo from "./SlotDemo";
 
 const modules = [
   {
@@ -25,6 +41,12 @@ const modules = [
     title: "Signals",
     desc: "Atomic state primitives",
     component: SignalsDemo,
+  },
+  {
+    id: "testing",
+    title: "Testing Framework",
+    desc: "Built-in test runner",
+    component: TestingDemo,
   },
   {
     id: "list",
@@ -73,6 +95,84 @@ const modules = [
     title: "Layout System",
     desc: "Class-based reactivity",
     component: LayoutTest,
+  },
+  {
+    id: "forms",
+    title: "Form Handling",
+    desc: "Validation & reactive fields",
+    component: FormDemo,
+  },
+  {
+    id: "binding",
+    title: "Two-Way Binding",
+    desc: "Compiler-powered bind:*",
+    component: BindingDemo,
+  },
+  {
+    id: "persist",
+    title: "State Persistence",
+    desc: "Zero-config localStorage",
+    component: PersistDemo,
+  },
+  {
+    id: "lazy",
+    title: "Lazy Loading",
+    desc: "Code-split components",
+    component: LazyLoadDemo,
+  },
+  {
+    id: "svg",
+    title: "SVG Demo",
+    desc: "SVG support & namespace",
+    component: SVGDemo,
+  },
+  {
+    id: "routing",
+    title: "Routing",
+    desc: "Client-side navigation",
+    component: RoutingDemo,
+  },
+  {
+    id: "styling",
+    title: "Styling System",
+    desc: "TS-to-CSS conversion",
+    component: StylingDemo,
+  },
+  {
+    id: "devtools",
+    title: "DevTools",
+    desc: "Built-in developer tools",
+    component: DevToolsDemo,
+  },
+  {
+    id: "utilities",
+    title: "Utilities",
+    desc: "DOM, format, device & more",
+    component: UtilitiesDemo,
+  },
+  {
+    id: "portal",
+    title: "Portals",
+    desc: "Render in external DOM",
+    component: PortalDemo,
+  },
+  {
+    id: "memo",
+    title: "Memoization",
+    desc: "Skip unnecessary re-renders",
+    component: MemoDemo,
+  },
+  {
+    id: "refs",
+    title: "Ref System",
+    desc: "DOM element references",
+    component: RefDemo,
+  },
+  {
+    id: "slots",
+    title: "Slots",
+    desc: "Content distribution",
+    component: SlotDemo,
   },
 ];
 
@@ -245,7 +345,10 @@ export default function DemoPage() {
         </header>
 
         <div id="demo-content-container">
-          {() => modules.find((m) => m.id === activeTab)?.component()}
+          {() => {
+            const module = modules.find((m) => m.id === activeTab);
+            return module?.component ? module.component() : <div class="demo-module">Feature demo coming soon...</div>;
+          }}
         </div>
       </div>
     </div>
